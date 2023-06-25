@@ -1,0 +1,9 @@
+build/
+.vscode/
+.cache/
+*~
+imgui.ini
+.projectile
+launch-backup.json
+lib/
+launch.json
