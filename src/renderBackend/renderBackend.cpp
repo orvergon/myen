@@ -154,6 +154,9 @@ BufferId ResourceManager::createBuffer(BufferType type, vk::DeviceSize size)
     case BufferType::eStageBuffer:
 	usageFlags = vk::BufferUsageFlagBits::eTransferSrc;
 	break;
+    case BufferType::eUniformBuffer:
+	usageFlags = vk::BufferUsageFlagBits::eUniformBuffer;
+	break;
     }
 
     vk::BufferCreateInfo bufferInfo{
@@ -167,9 +170,13 @@ BufferId ResourceManager::createBuffer(BufferType type, vk::DeviceSize size)
     vk::MemoryPropertyFlags memFlags;
     switch (type) {
     case BufferType::eVertexBuffer:
+	//TODO: I think this can be deviceCoherent? Since I just populate it once with a stage buffer and that's it.
 	memFlags = vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible;
 	break;
     case BufferType::eStageBuffer:
+	memFlags = vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible;
+	break;
+    case BufferType::eUniformBuffer:
 	memFlags = vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible;
 	break;
     }
@@ -583,6 +590,11 @@ void DescriptorManager::freeDS(DSId id)
     freeDescriptorsByLayout[descriptor.layoutId].push(descriptor);
 }
 
+vk::DescriptorSet DescriptorManager::getDS(DSId id)
+{
+    return descriptors[id].descriptorSet;
+}
+
 
 /*Pipeline manager Methods*/
 PipelineManager::PipelineManager(vk::Device device, DescriptorManager* descriptorManager) : device(device), descriptorManager(descriptorManager)
@@ -724,12 +736,18 @@ PipelineID PipelineManager::CreatePipeline(PipelineInfo info)
     static PipelineID id = 0;
     auto pipeline = device.createGraphicsPipeline(nullptr, pipelineCreateInfo);
     pipelines[id] = pipeline.value;
+    layouts[id] = layout;
     return id++;
 }
 
 vk::Pipeline PipelineManager::getPipeline(PipelineID id)
 {
     return pipelines[id];
+}
+
+vk::PipelineLayout PipelineManager::getPipelineLayout(PipelineID id)
+{
+    return layouts[id];
 }
 
 std::vector<char> PipelineManager::readFile(const std::string &filename)
@@ -814,6 +832,8 @@ VkResult CreateDebugUtilsMessengerEXT(VkInstance instance,
 /*Render Backend methods*/
 // temps
 PipelineID pipelineid;
+BufferId uniformBufferId;
+DSId descriptor;
 
 RenderBackend::RenderBackend(common::Window *window)
 {
@@ -1084,8 +1104,8 @@ RenderBackend::RenderBackend(common::Window *window)
     //####### Vulkan Initialization #######
 
     //Descriptor manager test
-    auto descriptorManager = DescriptorManager(device);
-    auto layout = descriptorManager.CreateLayout({
+    descriptorManager = new DescriptorManager(device);
+    auto layout = descriptorManager->CreateLayout({
 	    vk::DescriptorSetLayoutBinding {
 		.binding = 0,
 		.descriptorType = vk::DescriptorType::eUniformBuffer,
@@ -1093,11 +1113,11 @@ RenderBackend::RenderBackend(common::Window *window)
 		.stageFlags = vk::ShaderStageFlagBits::eAll,
 	    }
 	});
-    descriptorManager.preAllocateDescriptorSets(layout, 100);
+    descriptorManager->preAllocateDescriptorSets(layout, 100);
 
-    pipelineManager = new PipelineManager(device, &descriptorManager);
+    pipelineManager = new PipelineManager(device, descriptorManager);
     pipelineid = pipelineManager->CreatePipeline({
-	    .vertexShaderPath =   "/home/orvergon/myen/assets/default-shaders/vert",
+	    .vertexShaderPath   = "/home/orvergon/myen/assets/default-shaders/vert",
 	    .fragmentShaderPath = "/home/orvergon/myen/assets/default-shaders/frag",
 	    .vertexBinds = std::vector<vk::VertexInputBindingDescription>{
 		vk::VertexInputBindingDescription{
@@ -1125,6 +1145,7 @@ RenderBackend::RenderBackend(common::Window *window)
 		.maxDepthBounds = 1.0f,
 	    },
 	    .renderPass = renderPass,
+	    .layoutIds = std::vector<DSLayoutId> {layout},
 	});
 
     std::vector<float> points = {
@@ -1136,6 +1157,19 @@ RenderBackend::RenderBackend(common::Window *window)
     resourceManager->insertDataBuffer(stageBuffer, sizeof(points), points.data());
     vertexBuffer = resourceManager->createBuffer(BufferType::eVertexBuffer, sizeof(float) * points.size());
     resourceManager->copyBuffers(stageBuffer, vertexBuffer);
+
+    std::vector<float> descriptorBuffer = {0.0f, 1.0f, 1.0f};
+    auto stageBuffer2 = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(float) * descriptorBuffer.size());
+    resourceManager->insertDataBuffer(stageBuffer2, sizeof(float) * descriptorBuffer.size(), descriptorBuffer.data());
+    descriptor = descriptorManager->writeDS(layout, std::vector<WriteDescriptorInfo> {
+	    WriteDescriptorInfo{
+		.bufferInfo = vk::DescriptorBufferInfo{
+		    .buffer = resourceManager->getBuffer(stageBuffer2),
+		    .offset = 0,
+		    .range = sizeof(float) * descriptorBuffer.size(),
+		},
+	    }
+	});
 }
 
 RenderBackend::~RenderBackend()
@@ -1191,6 +1225,10 @@ void RenderBackend::drawFrame()
     commandBuffer.setScissor(0, 1, &sissor);
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipelineManager->getPipeline(pipelineid)); //TODO: Create the Pipeline
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+				     pipelineManager->getPipelineLayout(pipelineid),
+				     0,
+				     std::vector<vk::DescriptorSet>{descriptorManager->getDS(descriptor)}, nullptr);
     commandBuffer.draw(3, 1, 0, 0);
     commandBuffer.endRenderPass();
 

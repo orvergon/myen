@@ -24,6 +24,7 @@ enum BufferType
 {
     eVertexBuffer,
     eStageBuffer,
+    eUniformBuffer,
 };
 
 enum ImageType
@@ -114,6 +115,7 @@ public:
     DSId writeDS(DSLayoutId id, std::vector<WriteDescriptorInfo> writeInfos);
     void updateDS(DSId id, std::vector<WriteDescriptorInfo> writeInfos);
     void freeDS(DSId id);
+    vk::DescriptorSet getDS(DSId id);
 
 private:
     struct DescriptorSet{
@@ -142,6 +144,7 @@ private:
 
 
 typedef uint64_t PipelineID;
+typedef uint64_t PipelineLayoutID;
 
 class PipelineManager
 {
@@ -161,11 +164,13 @@ public:
     PipelineManager(vk::Device device, DescriptorManager* descriptorManager);
     PipelineID CreatePipeline(PipelineInfo info);
     vk::Pipeline getPipeline(PipelineID id);
+    vk::PipelineLayout getPipelineLayout(PipelineID id);
 
 private:
     vk::Device device;
     DescriptorManager* descriptorManager;
     std::unordered_map<PipelineID, vk::Pipeline> pipelines;
+    std::unordered_map<PipelineID, vk::PipelineLayout> layouts;
 
     std::vector<char> readFile(const std::string& filename);
     vk::ShaderModule compileShaderModule(const std::vector<char>& code);
@@ -188,6 +193,7 @@ private:
     ResourceManager* resourceManager;
     Commands* commands;
     PipelineManager* pipelineManager;
+    DescriptorManager* descriptorManager;
     short mFrame = 0;
 
     std::vector<vk::Fence> inFlightFences;
