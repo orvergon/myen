@@ -23,6 +23,7 @@ namespace RenderBackend {
 enum BufferType
 {
     eVertexBuffer,
+    eIndexBuffer,
     eStageBuffer,
     eUniformBuffer,
 };
@@ -70,7 +71,7 @@ public:
     ~ResourceManager();
     BufferId createBuffer(BufferType type, vk::DeviceSize size);
     void insertDataBuffer(BufferId id, vk::DeviceSize size, void* data);
-    void copyBuffers(BufferId source, BufferId destination);
+    void copyBuffers(BufferId source, BufferId destination, vk::DeviceSize size);
     vk::Buffer getBuffer(BufferId id);
 
     ImageId createImage(vk::Extent2D size, ImageType type);
@@ -205,6 +206,7 @@ private:
     vk::RenderPass renderPass;
     std::vector<vk::Framebuffer> framebuffers;
     BufferId vertexBuffer;
+    BufferId indexBuffer;
 };
 
 }

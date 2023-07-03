@@ -22,6 +22,7 @@
 #include <vulkan/vulkan_enums.hpp>
 #include <vulkan/vulkan_handles.hpp>
 #include <vulkan/vulkan_structs.hpp>
+#include "glm/glm.hpp"
 
 namespace RenderBackend{
 
@@ -33,7 +34,7 @@ std::vector<const char*> validationLayers = {
 };
 
 
-/*Helper functions*/
+/*####################### Helper functions ########################*/
 bool checkValidationLayerSupport()
 {
     int counter = 0;
@@ -131,7 +132,7 @@ uint32_t findMemoryType(vk::PhysicalDevice device, uint32_t type, vk::MemoryProp
 }
 
 
-/*ResourceManager methods*/
+/*###################### ResourceManager methods ######################################*/
 ResourceManager::ResourceManager(vk::Device device,
 				 vk::PhysicalDevice physicalDevice,
 				 Commands* commands) :
@@ -150,6 +151,9 @@ BufferId ResourceManager::createBuffer(BufferType type, vk::DeviceSize size)
     switch (type) {
     case BufferType::eVertexBuffer:
 	usageFlags = vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst;
+	break;
+    case BufferType::eIndexBuffer:
+	usageFlags = vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst;
 	break;
     case BufferType::eStageBuffer:
 	usageFlags = vk::BufferUsageFlagBits::eTransferSrc;
@@ -171,6 +175,9 @@ BufferId ResourceManager::createBuffer(BufferType type, vk::DeviceSize size)
     switch (type) {
     case BufferType::eVertexBuffer:
 	//TODO: I think this can be deviceCoherent? Since I just populate it once with a stage buffer and that's it.
+	memFlags = vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible;
+	break;
+    case BufferType::eIndexBuffer:
 	memFlags = vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible;
 	break;
     case BufferType::eStageBuffer:
@@ -205,11 +212,11 @@ void ResourceManager::insertDataBuffer(BufferId id, vk::DeviceSize size, void* d
     device.unmapMemory(bufferMemories[id]);
 }
 
-void ResourceManager::copyBuffers(BufferId source, BufferId destination)
+void ResourceManager::copyBuffers(BufferId source, BufferId destination, vk::DeviceSize size)
 {
     auto commmandBuffer = commands->BeginSingleTimeCommand();
     vk::BufferCopy copyCommand{
-	.size = bufferSizes[source],
+	.size = size,
     };
     std::vector<vk::BufferCopy> copyCommands{copyCommand};
     
@@ -333,7 +340,7 @@ vk::ImageView ResourceManager::getImageView(ImageId imageId)
 }
 
 
-/*Command Methods*/
+/*####################### Command Methods ##################################*/
 Commands::Commands(vk::Device device, vk::Queue queue, int queueFamilyId, int nPools) : device(device), queue(queue), queueFamilyId(queueFamilyId)
 {
     pools.reserve(nPools);
@@ -437,7 +444,7 @@ void Commands::endCommand(vk::CommandBuffer buffer,
 }
 
 
-/*DescriptorManager methods*/
+/*##################### DescriptorManager methods ####################################*/
 DescriptorManager::DescriptorManager(vk::Device device) : device(device)
 {
     std::vector<vk::DescriptorPoolSize> poolSizes{
@@ -596,7 +603,7 @@ vk::DescriptorSet DescriptorManager::getDS(DSId id)
 }
 
 
-/*Pipeline manager Methods*/
+/*############################### Pipeline manager Methods #################################*/
 PipelineManager::PipelineManager(vk::Device device, DescriptorManager* descriptorManager) : device(device), descriptorManager(descriptorManager)
 {}
 
@@ -776,7 +783,7 @@ vk::ShaderModule PipelineManager::compileShaderModule(const std::vector<char> &c
 }
 
 
-/*Debug functions*/
+/*############################## Debug functions ######################################*/
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
         VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -829,7 +836,7 @@ VkResult CreateDebugUtilsMessengerEXT(VkInstance instance,
     }
 }
 
-/*Render Backend methods*/
+/*############################## Render Backend methods #############################*/
 // temps
 PipelineID pipelineid;
 BufferId uniformBufferId;
@@ -1149,24 +1156,35 @@ RenderBackend::RenderBackend(common::Window *window)
 	});
 
     std::vector<float> points = {
-	-0.8f,  0.8f,
-	 0.0f, -0.8f,
-	 0.8f,  0.8f,
-    };
-    auto stageBuffer = resourceManager->createBuffer(BufferType::eStageBuffer, sizeof(float) * points.size());
-    resourceManager->insertDataBuffer(stageBuffer, sizeof(points), points.data());
-    vertexBuffer = resourceManager->createBuffer(BufferType::eVertexBuffer, sizeof(float) * points.size());
-    resourceManager->copyBuffers(stageBuffer, vertexBuffer);
+	-0.8f,  0.8f, //0
+	-0.8f, -0.8f, //1
+	 0.8f,  0.8f, //2
 
-    std::vector<float> descriptorBuffer = {0.0f, 1.0f, 1.0f};
-    auto stageBuffer2 = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(float) * descriptorBuffer.size());
-    resourceManager->insertDataBuffer(stageBuffer2, sizeof(float) * descriptorBuffer.size(), descriptorBuffer.data());
+	 0.8f, -0.8f, //3 1 2
+    };
+
+    std::vector<uint32_t> indices = {
+	0, 1, 2, 3, 2, 1 
+    };
+
+    auto stageBuffer = resourceManager->createBuffer(BufferType::eStageBuffer, sizeof(float) * points.size());
+    resourceManager->insertDataBuffer(stageBuffer, sizeof(float) * points.size(), points.data());
+    vertexBuffer = resourceManager->createBuffer(BufferType::eVertexBuffer, sizeof(float) * points.size());
+    resourceManager->copyBuffers(stageBuffer, vertexBuffer, sizeof(float) * points.size());
+
+    indexBuffer = resourceManager->createBuffer(BufferType::eIndexBuffer, sizeof(uint32_t) * indices.size());
+    resourceManager->insertDataBuffer(stageBuffer, sizeof(uint32_t) * indices.size(), indices.data());
+    resourceManager->copyBuffers(stageBuffer, indexBuffer, sizeof(uint32_t) * indices.size());
+
+    std::vector<glm::vec3> descriptorBuffer = { glm::vec3{1.0f, 1.0f, 1.0f} };
+    auto stageBuffer2 = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(glm::vec3) * descriptorBuffer.size());
+    resourceManager->insertDataBuffer(stageBuffer2, sizeof(glm::vec3) * descriptorBuffer.size(), descriptorBuffer.data());
     descriptor = descriptorManager->writeDS(layout, std::vector<WriteDescriptorInfo> {
 	    WriteDescriptorInfo{
 		.bufferInfo = vk::DescriptorBufferInfo{
 		    .buffer = resourceManager->getBuffer(stageBuffer2),
 		    .offset = 0,
-		    .range = sizeof(float) * descriptorBuffer.size(),
+		    .range = sizeof(glm::vec3) * descriptorBuffer.size(),
 		},
 	    }
 	});
@@ -1179,10 +1197,10 @@ RenderBackend::~RenderBackend()
 
 void RenderBackend::drawFrame()
 {
+    //############# <frame render boilerplate> ###############
     short frame = this->mFrame%2; //TODO hardcoded frame in flights could be messy
     this->mFrame++;
-    //I don't know if I need to check this waitValue.
-    auto waitValue = device.waitForFences(inFlightFences[frame], false, UINT64_MAX);
+    auto waitValue = device.waitForFences(inFlightFences[frame], false, UINT64_MAX); //Should I check this?
     device.resetFences(std::vector<vk::Fence>{inFlightFences[frame]});
 
     auto imageIndex = device.acquireNextImageKHR(swapchain, UINT64_MAX, imageAvailableSemaphores[frame]).value;
@@ -1202,11 +1220,7 @@ void RenderBackend::drawFrame()
 	.clearValueCount = static_cast<uint32_t>(clearValues.size()),
 	.pClearValues = clearValues.data(),
     };
-
     commandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
-    std::vector<vk::Buffer> buffers{resourceManager->getBuffer(vertexBuffer)};
-    std::vector<vk::DeviceSize> offsets{vk::DeviceSize(0)};
-    commandBuffer.bindVertexBuffers(0, buffers, offsets);
 
     vk::Viewport viewport{
 	.x = 0.0f,
@@ -1217,19 +1231,24 @@ void RenderBackend::drawFrame()
 	.maxDepth = 0.0f,
     };
     commandBuffer.setViewport(0, 1, &viewport);
-
     vk::Rect2D sissor{
 	.offset = {0, 0},
 	.extent = surfaceSize,
     };
     commandBuffer.setScissor(0, 1, &sissor);
+    //############# </frame render boilerplate> ###############
+
+    std::vector<vk::Buffer> buffers{resourceManager->getBuffer(vertexBuffer)};
+    std::vector<vk::DeviceSize> offsets{vk::DeviceSize(0)};
+    commandBuffer.bindVertexBuffers(0, buffers, offsets);
+    commandBuffer.bindIndexBuffer(resourceManager->getBuffer(indexBuffer), vk::DeviceSize(0), vk::IndexType::eUint32);
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipelineManager->getPipeline(pipelineid)); //TODO: Create the Pipeline
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
 				     pipelineManager->getPipelineLayout(pipelineid),
 				     0,
 				     std::vector<vk::DescriptorSet>{descriptorManager->getDS(descriptor)}, nullptr);
-    commandBuffer.draw(3, 1, 0, 0);
+    commandBuffer.drawIndexed(6, 1, 0, 0, 0);
     commandBuffer.endRenderPass();
 
     std::vector<vk::Semaphore> renderFinishedSemaphores = {this->renderFinishedSemaphores[frame]};
