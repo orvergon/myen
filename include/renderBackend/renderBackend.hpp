@@ -75,6 +75,7 @@ public:
     vk::Buffer getBuffer(BufferId id);
 
     ImageId createImage(vk::Extent2D size, ImageType type);
+    void transitionImage(ImageId imageId, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
     void copyBufferToImage(BufferId bufferId, ImageId imageId, vk::Extent2D size);
     vk::ImageView getImageView(ImageId imageId);
     
@@ -89,11 +90,6 @@ private:
     std::unordered_map<ImageId, vk::DeviceMemory> imageMemories;
     std::unordered_map<ImageId, vk::Image> images;
     std::unordered_map<ImageId, vk::ImageView> imageViews;
-
-    vk::Format format;
-    vk::ImageTiling tiling;
-    vk::ImageUsageFlags usage;
-    vk::MemoryPropertyFlags memFlags;
 };
 
 

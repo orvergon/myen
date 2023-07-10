@@ -10,6 +10,7 @@ set(GLFW_LIB_FOLDER lib/glfw/build/src)
 find_library(GLFW3 glfw3 HINTS ${GLFW_LIB_FOLDER} REQUIRED)
 
 set(IMGUI_FOLDER lib/imgui)
+set(STB_FOLDER lib/stb)
 set(IMGUI_BACKENDS ${IMGUI_FOLDER}/backends)
 
 include_directories(myen
