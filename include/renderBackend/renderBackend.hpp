@@ -113,6 +113,7 @@ public:
     void updateDS(DSId id, std::vector<WriteDescriptorInfo> writeInfos);
     void freeDS(DSId id);
     vk::DescriptorSet getDS(DSId id);
+    vk::DescriptorPool getDescriptorPool();
 
 private:
     struct DescriptorSet{
@@ -187,6 +188,7 @@ private:
     vk::Device device;
     vk::SwapchainKHR swapchain;
     
+    common::Window* window;
     ResourceManager* resourceManager;
     Commands* commands;
     PipelineManager* pipelineManager;

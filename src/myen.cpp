@@ -15,7 +15,7 @@ namespace myen {
 	while(!window->shouldClose())
 	{
 	    renderBackend->drawFrame();
-	    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	    std::this_thread::sleep_for(std::chrono::milliseconds(5));
 	}
     }
 

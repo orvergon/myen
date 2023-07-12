@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <fstream>
+#include <glm/fwd.hpp>
 #include <string>
 #include <string_view>
 #include <sys/types.h>
@@ -23,7 +24,14 @@
 #include <vulkan/vulkan_enums.hpp>
 #include <vulkan/vulkan_handles.hpp>
 #include <vulkan/vulkan_structs.hpp>
+
 #include "glm/glm.hpp"
+#include "glm/mat4x4.hpp"
+
+#include "imgui.h"
+#include "imgui_impl_vulkan.h"
+#include "imgui_impl_glfw.h"
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -501,8 +509,8 @@ void Commands::endCommand(vk::CommandBuffer buffer,
 DescriptorManager::DescriptorManager(vk::Device device) : device(device)
 {
     std::vector<vk::DescriptorPoolSize> poolSizes{
-        {vk::DescriptorType::eUniformBuffer, 100},
-        {vk::DescriptorType::eCombinedImageSampler, 100},
+        {vk::DescriptorType::eUniformBuffer, 1000},
+        {vk::DescriptorType::eCombinedImageSampler, 1000},
     };
 
     vk::DescriptorPoolCreateInfo createPoolInfo {
@@ -658,6 +666,11 @@ void DescriptorManager::freeDS(DSId id)
 vk::DescriptorSet DescriptorManager::getDS(DSId id)
 {
     return descriptors[id].descriptorSet;
+}
+
+vk::DescriptorPool DescriptorManager::getDescriptorPool()
+{
+    return pool;
 }
 
 
@@ -900,7 +913,27 @@ PipelineID pipelineid;
 BufferId uniformBufferId;
 DSId descriptor;
 
-RenderBackend::RenderBackend(common::Window *window)
+struct BasicFrameUniformStruct {
+    glm::vec4 cameraPos;
+    glm::mat4 proj;
+    glm::mat4 view;
+};
+BasicFrameUniformStruct basicFrameUniform{glm::vec4{0.0f, 0.0f, 0.0f, 0.0f}};
+
+vk::Instance instance;
+vk::PhysicalDevice physicalDevice;
+vk::Device device;
+
+static void check_vk_result(VkResult err)
+{
+    if (err == 0)
+        return;
+    fprintf(stderr, "[vulkan] Error: VkResult = %d\n", err);
+    if (err < 0)
+        abort();
+}
+
+RenderBackend::RenderBackend(common::Window *window) : window(window)
 {
     //======== Vulkan Initialization ========
     //Vulkan Init
@@ -1044,11 +1077,11 @@ RenderBackend::RenderBackend(common::Window *window)
     };
     std::vector<uint32_t> queueFamilyIndices = {graphicsFamilyId.value(), presentFamilyId.value()};
     if(graphicsFamilyId.value() != presentFamilyId.value()){
-    swapchainCreateInfo.imageSharingMode = vk::SharingMode::eConcurrent;
-    swapchainCreateInfo.queueFamilyIndexCount = queueFamilyIndices.size();
-    swapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
+        swapchainCreateInfo.imageSharingMode = vk::SharingMode::eConcurrent;
+        swapchainCreateInfo.queueFamilyIndexCount = queueFamilyIndices.size();
+        swapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
     } else{
-    swapchainCreateInfo.imageSharingMode = vk::SharingMode::eExclusive;
+        swapchainCreateInfo.imageSharingMode = vk::SharingMode::eExclusive;
     }
 
     swapchain = device.createSwapchainKHR(swapchainCreateInfo);
@@ -1057,26 +1090,26 @@ RenderBackend::RenderBackend(common::Window *window)
     swapChainImageViews.reserve(swapchainImages.size());
     for(const auto& image : swapchainImages)
     {
-    vk::ImageViewCreateInfo imageViewCreateInfo{
-        .image = image,
-        .viewType = vk::ImageViewType::e2D,
-        .format = surfaceFormat.format,
-        .components = {
-        .r = vk::ComponentSwizzle::eIdentity,
-        .g = vk::ComponentSwizzle::eIdentity,
-        .b = vk::ComponentSwizzle::eIdentity,
-        .a = vk::ComponentSwizzle::eIdentity,
-        },
-        .subresourceRange = {
-        .aspectMask = vk::ImageAspectFlagBits::eColor,
-        .baseMipLevel = 0,
-        .levelCount = 1,
-        .baseArrayLayer = 0,
-        .layerCount = 1,
-        }
-    };
-    auto imageView = device.createImageView(imageViewCreateInfo);
-    swapChainImageViews.push_back(imageView);
+        vk::ImageViewCreateInfo imageViewCreateInfo{
+            .image = image,
+            .viewType = vk::ImageViewType::e2D,
+            .format = surfaceFormat.format,
+            .components = {
+            .r = vk::ComponentSwizzle::eIdentity,
+            .g = vk::ComponentSwizzle::eIdentity,
+            .b = vk::ComponentSwizzle::eIdentity,
+            .a = vk::ComponentSwizzle::eIdentity,
+            },
+            .subresourceRange = {
+            .aspectMask = vk::ImageAspectFlagBits::eColor,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+            }
+        };
+        auto imageView = device.createImageView(imageViewCreateInfo);
+        swapChainImageViews.push_back(imageView);
     }
 
     //Render pass
@@ -1166,8 +1199,38 @@ RenderBackend::RenderBackend(common::Window *window)
     imageAvailableSemaphores.push_back(device.createSemaphore(semaphoreCreateInfo));
     renderFinishedSemaphores.push_back(device.createSemaphore(semaphoreCreateInfo));
     }
+
+    descriptorManager = new DescriptorManager(device);
     //####### Vulkan Initialization #######
 
+    //ImGui
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io; //what the fuck
+    ImGui::StyleColorsLight();
+    ImGui_ImplGlfw_InitForVulkan((GLFWwindow*)window->windowPointer, true);
+    ImGui_ImplVulkan_InitInfo initInfo{
+        .Instance = instance,
+        .PhysicalDevice = physicalDevice,
+        .Device = device,
+        .QueueFamily = graphicsFamilyId.value(), 
+        .Queue = graphicsQueue,
+        .PipelineCache = NULL,
+        .DescriptorPool = descriptorManager->getDescriptorPool(),
+        .Subpass = 0,
+        .MinImageCount = 2,
+        .ImageCount = 2,
+        .MSAASamples = VK_SAMPLE_COUNT_1_BIT,
+        .Allocator = nullptr,
+        .CheckVkResultFn = check_vk_result,
+    };
+    ImGui_ImplVulkan_Init(&initInfo, VkRenderPass(renderPass));
+    auto commandBuffer = commands->BeginSingleTimeCommand();
+    ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
+    commands->EndSingleTimeCommand(commandBuffer, true);
+    ImGui_ImplVulkan_DestroyFontUploadObjects();
+
+    //Hardcoded testing
     std::vector<float> points = {
         -0.8f,  0.8f, 0.0f, 1.0f,//0
         -0.8f, -0.8f, 0.0f, 0.0f,//1
@@ -1222,8 +1285,6 @@ RenderBackend::RenderBackend(common::Window *window)
     };
     auto sampler = device.createSampler(samplerInfo);
 
-    //Descriptor manager test
-    descriptorManager = new DescriptorManager(device);
     auto layout = descriptorManager->CreateLayout({
         vk::DescriptorSetLayoutBinding {
             .binding = 0,
@@ -1361,6 +1422,16 @@ void RenderBackend::drawFrame()
                      0,
                      std::vector<vk::DescriptorSet>{descriptorManager->getDS(descriptor)}, nullptr);
     commandBuffer.drawIndexed(6, 1, 0, 0, 0);
+
+    //ImGui stuff
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::ShowDemoWindow();
+    ImGui::Render();
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+
     commandBuffer.endRenderPass();
 
     std::vector<vk::Semaphore> renderFinishedSemaphores = {this->renderFinishedSemaphores[frame]};

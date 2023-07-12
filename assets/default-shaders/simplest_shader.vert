@@ -2,6 +2,8 @@
 
 struct FrameUniformStruct{
     vec4 cameraPos;
+    mat4 proj;
+    mat4 view;
 };
 
 layout(set = 0, binding = 0) uniform FrameUniform{
