@@ -25,6 +25,7 @@
 #include <vulkan/vulkan_handles.hpp>
 #include <vulkan/vulkan_structs.hpp>
 
+#include "common.hpp"
 #include "glm/glm.hpp"
 #include "glm/mat4x4.hpp"
 
@@ -580,6 +581,13 @@ void DescriptorManager::preAllocateDescriptorSets(DSLayoutId layoutId, uint32_t 
     }
 }
 
+DSId DescriptorManager::getFreeDS(DSLayoutId id)
+{
+    DescriptorSet descriptor = freeDescriptorsByLayout[id].top();
+    freeDescriptorsByLayout[id].pop();
+    return descriptor.id;
+}
+
 DSId DescriptorManager::writeDS(DSLayoutId id, std::vector<WriteDescriptorInfo> writeInfos)
 {
     DescriptorSet descriptor = freeDescriptorsByLayout[id].top();
@@ -911,7 +919,7 @@ VkResult CreateDebugUtilsMessengerEXT(VkInstance instance,
 // temps
 PipelineID pipelineid;
 BufferId uniformBufferId;
-DSId descriptor;
+DSId descriptors[2];
 
 struct BasicFrameUniformStruct {
     glm::vec4 cameraPos;
@@ -932,6 +940,10 @@ static void check_vk_result(VkResult err)
     if (err < 0)
         abort();
 }
+
+BufferId frameUniformBuffers[2];
+vk::Sampler sampler;
+vk::ImageView imageView;
 
 RenderBackend::RenderBackend(common::Window *window) : window(window)
 {
@@ -1283,7 +1295,8 @@ RenderBackend::RenderBackend(common::Window *window) : window(window)
         .borderColor = vk::BorderColor::eIntOpaqueBlack,
         .unnormalizedCoordinates = false,
     };
-    auto sampler = device.createSampler(samplerInfo);
+    sampler = device.createSampler(samplerInfo);
+    imageView = resourceManager->getImageView(image);
 
     auto layout = descriptorManager->CreateLayout({
         vk::DescriptorSetLayoutBinding {
@@ -1342,25 +1355,20 @@ RenderBackend::RenderBackend(common::Window *window) : window(window)
         .layoutIds = std::vector<DSLayoutId> {layout},
     });
 
-    std::vector<glm::vec3> descriptorBuffer = { glm::vec3{1.0f, 1.0f, 1.0f} };
-    auto stageBuffer2 = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(glm::vec3) * descriptorBuffer.size());
-    resourceManager->insertDataBuffer(stageBuffer2, sizeof(glm::vec3) * descriptorBuffer.size(), descriptorBuffer.data());
-    descriptor = descriptorManager->writeDS(layout, std::vector<WriteDescriptorInfo> {
-        WriteDescriptorInfo{
-            .bufferInfo = vk::DescriptorBufferInfo{
-                .buffer = resourceManager->getBuffer(stageBuffer2),
-                .offset = 0,
-                .range = sizeof(glm::vec3) * descriptorBuffer.size(),
-            },
-        },
-        WriteDescriptorInfo{
-            .imageInfo = vk::DescriptorImageInfo{
-                .sampler = sampler,
-                .imageView = resourceManager->getImageView(image),
-                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
-            }
-        },
-    });
+    camera = common::Camera{
+        .cameraPos = glm::vec4(1.0f),
+    };
+    std::vector<glm::vec3> descriptorData = {camera.cameraPos};
+
+    //Devia ter um helper pra criar o buffer e inserir logo o dado de uma vez.
+    frameUniformBuffers[0] = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(glm::vec4) * descriptorData.size());
+    resourceManager->insertDataBuffer(frameUniformBuffers[0], sizeof(glm::vec4), &camera.cameraPos);
+
+    frameUniformBuffers[1] = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(glm::vec4) * descriptorData.size());
+    resourceManager->insertDataBuffer(frameUniformBuffers[1], sizeof(glm::vec4), &camera.cameraPos);
+
+    descriptors[0] = descriptorManager->getFreeDS(layout);
+    descriptors[1] = descriptorManager->getFreeDS(layout);
 }
 
 RenderBackend::~RenderBackend()
@@ -1410,17 +1418,35 @@ void RenderBackend::drawFrame()
     };
     commandBuffer.setScissor(0, 1, &sissor);
     //############# </frame render boilerplate> ###############
+    //Render
+    resourceManager->insertDataBuffer(frameUniformBuffers[frame], sizeof(glm::vec4), &camera.cameraPos);
+    descriptorManager->updateDS(descriptors[frame], std::vector<WriteDescriptorInfo> {
+        WriteDescriptorInfo{
+            .bufferInfo = vk::DescriptorBufferInfo{
+                .buffer = resourceManager->getBuffer(frameUniformBuffers[frame]),
+                .offset = 0,
+                .range = sizeof(glm::vec4),
+            },
+        },
+        WriteDescriptorInfo{
+            .imageInfo = vk::DescriptorImageInfo{
+                .sampler = sampler,
+                .imageView = imageView,
+                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+            }
+        },
+    });
 
     std::vector<vk::Buffer> buffers{resourceManager->getBuffer(vertexBuffer)};
     std::vector<vk::DeviceSize> offsets{vk::DeviceSize(0)};
     commandBuffer.bindVertexBuffers(0, buffers, offsets);
     commandBuffer.bindIndexBuffer(resourceManager->getBuffer(indexBuffer), vk::DeviceSize(0), vk::IndexType::eUint32);
 
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipelineManager->getPipeline(pipelineid)); //TODO: Create the Pipeline
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipelineManager->getPipeline(pipelineid));
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
                      pipelineManager->getPipelineLayout(pipelineid),
                      0,
-                     std::vector<vk::DescriptorSet>{descriptorManager->getDS(descriptor)}, nullptr);
+                     std::vector<vk::DescriptorSet>{descriptorManager->getDS(descriptors[frame])}, nullptr);
     commandBuffer.drawIndexed(6, 1, 0, 0, 0);
 
     //ImGui stuff
@@ -1429,8 +1455,19 @@ void RenderBackend::drawFrame()
     ImGui::NewFrame();
 
     ImGui::ShowDemoWindow();
+
+    static float x = 0;
+    static float y = 0;
+    static float z = 0;
+    ImGui::Begin("Janela");
+    ImGui::SliderFloat("x", &camera.cameraPos.x, 0.0f, 1.0f);
+    ImGui::SliderFloat("y", &camera.cameraPos.y, 0.0f, 1.0f);
+    ImGui::SliderFloat("z", &camera.cameraPos.z, 0.0f, 1.0f);
+    ImGui::End();
+    
     ImGui::Render();
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+
 
     commandBuffer.endRenderPass();
 

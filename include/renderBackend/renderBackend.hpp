@@ -109,6 +109,7 @@ public:
     vk::DescriptorSetLayout getDSLayout(DSLayoutId ids);
     std::vector<vk::DescriptorSetLayout> getDSLayouts(std::vector<DSLayoutId> id);
     void preAllocateDescriptorSets(DSLayoutId id, uint32_t noSets);
+    DSId getFreeDS(DSLayoutId id);
     DSId writeDS(DSLayoutId id, std::vector<WriteDescriptorInfo> writeInfos);
     void updateDS(DSId id, std::vector<WriteDescriptorInfo> writeInfos);
     void freeDS(DSId id);
@@ -183,6 +184,7 @@ public:
     ~RenderBackend();
 
     void drawFrame();
+    common::Camera camera; //should this be a pointer?
 private:
     vk::Instance instance;
     vk::Device device;
