@@ -104,6 +104,8 @@ struct WriteDescriptorInfo{
 class DescriptorManager
 {
 public:
+    //TODO: Devia ter um helper pra criar o buffer e inserir logo o dado de uma vez.
+    //TODO: check brainstorm about typed buffers.
     DescriptorManager(vk::Device device);
     DSLayoutId CreateLayout(std::vector<vk::DescriptorSetLayoutBinding> bindings);
     vk::DescriptorSetLayout getDSLayout(DSLayoutId ids);

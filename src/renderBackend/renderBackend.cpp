@@ -28,6 +28,8 @@
 #include "common.hpp"
 #include "glm/glm.hpp"
 #include "glm/mat4x4.hpp"
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "imgui.h"
 #include "imgui_impl_vulkan.h"
@@ -942,8 +944,19 @@ static void check_vk_result(VkResult err)
 }
 
 BufferId frameUniformBuffers[2];
+BufferId objUniformBuffers[2];
 vk::Sampler sampler;
 vk::ImageView imageView;
+
+struct FrameUniform {
+    glm::vec4 cameraPosition;
+    glm::mat4 cameraProjection;
+    glm::mat4 cameraView;
+};
+
+struct ObjectUniform {
+    glm::mat4 model;
+};
 
 RenderBackend::RenderBackend(common::Window *window) : window(window)
 {
@@ -1307,6 +1320,12 @@ RenderBackend::RenderBackend(common::Window *window) : window(window)
         },
         vk::DescriptorSetLayoutBinding {
             .binding = 1,
+            .descriptorType = vk::DescriptorType::eUniformBuffer,
+            .descriptorCount = 1,
+            .stageFlags = vk::ShaderStageFlagBits::eAll,
+        },
+        vk::DescriptorSetLayoutBinding {
+            .binding = 2,
             .descriptorType = vk::DescriptorType::eCombinedImageSampler,
             .descriptorCount = 1,
             .stageFlags = vk::ShaderStageFlagBits::eAll,
@@ -1358,14 +1377,11 @@ RenderBackend::RenderBackend(common::Window *window) : window(window)
     camera = common::Camera{
         .cameraPos = glm::vec4(1.0f),
     };
-    std::vector<glm::vec3> descriptorData = {camera.cameraPos};
 
-    //Devia ter um helper pra criar o buffer e inserir logo o dado de uma vez.
-    frameUniformBuffers[0] = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(glm::vec4) * descriptorData.size());
-    resourceManager->insertDataBuffer(frameUniformBuffers[0], sizeof(glm::vec4), &camera.cameraPos);
-
-    frameUniformBuffers[1] = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(glm::vec4) * descriptorData.size());
-    resourceManager->insertDataBuffer(frameUniformBuffers[1], sizeof(glm::vec4), &camera.cameraPos);
+    frameUniformBuffers[0] = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(FrameUniform));
+    frameUniformBuffers[1] = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(FrameUniform));
+    objUniformBuffers[0] = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(ObjectUniform));
+    objUniformBuffers[1] = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(ObjectUniform));
 
     descriptors[0] = descriptorManager->getFreeDS(layout);
     descriptors[1] = descriptorManager->getFreeDS(layout);
@@ -1418,14 +1434,39 @@ void RenderBackend::drawFrame()
     };
     commandBuffer.setScissor(0, 1, &sissor);
     //############# </frame render boilerplate> ###############
+
     //Render
-    resourceManager->insertDataBuffer(frameUniformBuffers[frame], sizeof(glm::vec4), &camera.cameraPos);
+    camera.proj = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+    camera.view = glm::translate(glm::mat4(1.0f), glm::vec3(-camera.cameraPos));
+
+    FrameUniform frameUniform{
+        .cameraPosition = camera.cameraPos,
+        .cameraProjection = camera.proj,
+        .cameraView = camera.view,
+    };
+    resourceManager->insertDataBuffer(frameUniformBuffers[frame], sizeof(FrameUniform), &frameUniform);
+
+    static glm::vec3 pos = glm::vec3(1.0f, 1.0f, -1.0f);
+    ObjectUniform objUniform{
+        .model = glm::translate(glm::mat4(1.0f), pos),
+    };
+    resourceManager->insertDataBuffer(objUniformBuffers[frame], sizeof(ObjectUniform), &objUniform);
+
     descriptorManager->updateDS(descriptors[frame], std::vector<WriteDescriptorInfo> {
         WriteDescriptorInfo{
             .bufferInfo = vk::DescriptorBufferInfo{
                 .buffer = resourceManager->getBuffer(frameUniformBuffers[frame]),
                 .offset = 0,
-                .range = sizeof(glm::vec4),
+                .range = sizeof(frameUniform), 
+                //TODO: could this be something like getBufferRange?
+                //or maybe typed buffers
+            },
+        },
+        WriteDescriptorInfo{
+            .bufferInfo = vk::DescriptorBufferInfo{
+                .buffer = resourceManager->getBuffer(objUniformBuffers[frame]),
+                .offset = 0,
+                .range = sizeof(objUniform),
             },
         },
         WriteDescriptorInfo{
@@ -1460,9 +1501,13 @@ void RenderBackend::drawFrame()
     static float y = 0;
     static float z = 0;
     ImGui::Begin("Janela");
-    ImGui::SliderFloat("x", &camera.cameraPos.x, 0.0f, 1.0f);
-    ImGui::SliderFloat("y", &camera.cameraPos.y, 0.0f, 1.0f);
-    ImGui::SliderFloat("z", &camera.cameraPos.z, 0.0f, 1.0f);
+    ImGui::SliderFloat("x", &camera.cameraPos.x, -5.0f, 5.0f);
+    ImGui::SliderFloat("y", &camera.cameraPos.y, -5.0f, 5.0f);
+    ImGui::SliderFloat("z", &camera.cameraPos.z, -5.0f, 5.0f);
+
+    ImGui::SliderFloat("obj - x", &pos.x, -2.0f, 2.0f);
+    ImGui::SliderFloat("obj - y", &pos.y, -2.0f, 2.0f);
+    ImGui::SliderFloat("obj - z", &pos.z, -2.0f, 2.0f);
     ImGui::End();
     
     ImGui::Render();
