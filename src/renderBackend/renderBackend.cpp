@@ -1257,17 +1257,17 @@ RenderBackend::RenderBackend(common::Window *window) : window(window)
 
     //Hardcoded testing
     std::vector<float> points = {
-        -0.8f,  0.8f, 0.0f, 1.0f,//0
-        -0.8f, -0.8f, 0.0f, 0.0f,//1
-         0.8f,  0.8f, 1.0f, 1.0f,//2
-
-         0.8f, -0.8f, 1.0f, 0.0f,//3 1 2
+        -0.8f,  0.8f, 0.0f, 0.0f, 1.0f,//0
+        -0.8f, -0.8f, 0.0f, 0.0f, 0.0f,//1
+         0.8f,  0.8f, 0.0f, 1.0f, 1.0f,//2
+         0.8f, -0.8f, 0.0f, 1.0f, 0.0f,//3 1 2
     };
 
     std::vector<uint32_t> indices = {
         0, 1, 2, 3, 2, 1 
     };
 
+    //Should this be a single function? Resource manager would deal with staging buffer.
     auto stageBuffer = resourceManager->createBuffer(BufferType::eStageBuffer, sizeof(float) * points.size());
     resourceManager->insertDataBuffer(stageBuffer, sizeof(float) * points.size(), points.data());
     vertexBuffer = resourceManager->createBuffer(BufferType::eVertexBuffer, sizeof(float) * points.size());
@@ -1338,10 +1338,13 @@ RenderBackend::RenderBackend(common::Window *window) : window(window)
     pipelineid = pipelineManager->CreatePipeline({
         .vertexShaderPath   = "/home/orvergon/myen/assets/default-shaders/vert",
         .fragmentShaderPath = "/home/orvergon/myen/assets/default-shaders/frag",
-        .vertexBinds = std::vector<vk::VertexInputBindingDescription>{
+        //Será que não dá pra automatizar essa parte?
+        //Falar os attribs, location incrementar automaticamente
+        //stride ser setado automaticamente
+        .vertexBinds = std::vector<vk::VertexInputBindingDescription>{ 
             vk::VertexInputBindingDescription{
                 .binding = 0,
-                .stride = static_cast<uint32_t>(sizeof(float) * 4),
+                .stride = static_cast<uint32_t>(sizeof(float) * 5),
                 .inputRate = vk::VertexInputRate::eVertex,
             }
         },
@@ -1349,14 +1352,14 @@ RenderBackend::RenderBackend(common::Window *window) : window(window)
             vk::VertexInputAttributeDescription{
                 .location = 0,
                 .binding = 0,
-                .format = vk::Format::eR32G32Sfloat,
+                .format = vk::Format::eR32G32B32Sfloat,
                 .offset = 0,
             },
             vk::VertexInputAttributeDescription{
                 .location = 1,
                 .binding = 0,
                 .format = vk::Format::eR32G32Sfloat,
-                .offset = sizeof(float) * 2,
+                .offset = sizeof(float) * 3,
             }
         },
         .depthStencilStateCreateInfo = vk::PipelineDepthStencilStateCreateInfo{
@@ -1375,7 +1378,7 @@ RenderBackend::RenderBackend(common::Window *window) : window(window)
     });
 
     camera = common::Camera{
-        .cameraPos = glm::vec4(1.0f),
+        .cameraPos = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
     };
 
     frameUniformBuffers[0] = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(FrameUniform));
@@ -1446,7 +1449,7 @@ void RenderBackend::drawFrame()
     };
     resourceManager->insertDataBuffer(frameUniformBuffers[frame], sizeof(FrameUniform), &frameUniform);
 
-    static glm::vec3 pos = glm::vec3(1.0f, 1.0f, -1.0f);
+    static glm::vec3 pos = glm::vec3(0.0f, 0.0f, -2.0f);
     ObjectUniform objUniform{
         .model = glm::translate(glm::mat4(1.0f), pos),
     };
@@ -1501,13 +1504,13 @@ void RenderBackend::drawFrame()
     static float y = 0;
     static float z = 0;
     ImGui::Begin("Janela");
-    ImGui::SliderFloat("x", &camera.cameraPos.x, -5.0f, 5.0f);
-    ImGui::SliderFloat("y", &camera.cameraPos.y, -5.0f, 5.0f);
-    ImGui::SliderFloat("z", &camera.cameraPos.z, -5.0f, 5.0f);
+    ImGui::DragFloat("Cam.x", &camera.cameraPos.x, 0.005f);
+    ImGui::DragFloat("Cam.y", &camera.cameraPos.y, 0.005f);
+    ImGui::DragFloat("Cam.z", &camera.cameraPos.z, 0.005f);
 
-    ImGui::SliderFloat("obj - x", &pos.x, -2.0f, 2.0f);
-    ImGui::SliderFloat("obj - y", &pos.y, -2.0f, 2.0f);
-    ImGui::SliderFloat("obj - z", &pos.z, -2.0f, 2.0f);
+    ImGui::DragFloat("Obj.x", &pos.x, 0.005f);
+    ImGui::DragFloat("Obj.y", &pos.y, 0.005f);
+    ImGui::DragFloat("Obj.z", &pos.z, 0.005f);
     ImGui::End();
     
     ImGui::Render();

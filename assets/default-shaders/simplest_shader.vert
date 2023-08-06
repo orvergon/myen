@@ -16,14 +16,14 @@ layout(set = 0, binding = 1) uniform ObjectUniform{
     mat4 model;
 }objUniform;
 
-layout(location = 0) in vec2 inPosition;
+layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec2 texPosition;
 
 layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec2 texCoord;
 
 void main() {
-    gl_Position = frameUniform.proj * frameUniform.view * objUniform.model * vec4(inPosition.xy, 0.0, 1.0);
+    gl_Position = frameUniform.proj * frameUniform.view * objUniform.model * vec4(inPosition, 1.0);
 
     fragColor = frameUniform.cameraPos.xyz;
     texCoord = texPosition;
