@@ -35,7 +35,7 @@
 #include "imgui_impl_vulkan.h"
 #include "imgui_impl_glfw.h"
 
-#define STB_IMAGE_IMPLEMENTATION
+//#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 namespace RenderBackend{
@@ -585,6 +585,8 @@ void DescriptorManager::preAllocateDescriptorSets(DSLayoutId layoutId, uint32_t 
 
 DSId DescriptorManager::getFreeDS(DSLayoutId id)
 {
+    //TODO: make it fail gracefully when there is no more free descriptors
+    //Today it just crashes with no message.
     DescriptorSet descriptor = freeDescriptorsByLayout[id].top();
     freeDescriptorsByLayout[id].pop();
     return descriptor.id;
@@ -821,11 +823,15 @@ PipelineID PipelineManager::CreatePipeline(PipelineInfo info)
         .basePipelineIndex = -1,
     };
 
-    static PipelineID id = 0;
+    static PipelineID pipelineId = 0;
     auto pipeline = device.createGraphicsPipeline(nullptr, pipelineCreateInfo);
-    pipelines[id] = pipeline.value;
-    layouts[id] = layout;
-    return id++;
+    if(pipeline.result != vk::Result::eSuccess)
+        std::cout << "Error pipeline" << std::endl;;
+
+    pipelines[pipelineId] = pipeline.value;
+    layouts[pipelineId] = layout;
+
+    return pipelineId++;
 }
 
 vk::Pipeline PipelineManager::getPipeline(PipelineID id)
@@ -944,9 +950,6 @@ static void check_vk_result(VkResult err)
 }
 
 BufferId frameUniformBuffers[2];
-BufferId objUniformBuffers[2];
-vk::Sampler sampler;
-vk::ImageView imageView;
 
 struct FrameUniform {
     glm::vec4 cameraPosition;
@@ -1226,6 +1229,7 @@ RenderBackend::RenderBackend(common::Window *window) : window(window)
     }
 
     descriptorManager = new DescriptorManager(device);
+    pipelineManager = new PipelineManager(device, descriptorManager);
     //####### Vulkan Initialization #######
 
     //ImGui
@@ -1255,42 +1259,111 @@ RenderBackend::RenderBackend(common::Window *window) : window(window)
     commands->EndSingleTimeCommand(commandBuffer, true);
     ImGui_ImplVulkan_DestroyFontUploadObjects();
 
-    //Hardcoded testing
-    std::vector<float> points = {
-        -0.8f,  0.8f, 0.0f, 0.0f, 1.0f,//0
-        -0.8f, -0.8f, 0.0f, 0.0f, 0.0f,//1
-         0.8f,  0.8f, 0.0f, 1.0f, 1.0f,//2
-         0.8f, -0.8f, 0.0f, 1.0f, 0.0f,//3 1 2
+    //Should this be a single function? Resource manager would deal with staging buffer.
+    camera = common::Camera{
+        .cameraPos = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
     };
 
+    frameUniformBuffers[0] = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(FrameUniform));
+    frameUniformBuffers[1] = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(FrameUniform));
+
+    //Hardcoded testing
+    std::vector<common::Vertex> vertex_points{
+        common::Vertex{
+            .pos = {-0.8f,  0.8f, 0.0f},
+            .texCoord = {0.0f, 1.0f},
+        },
+        common::Vertex{
+            .pos = {-0.8f, -0.8f, 0.0f},
+            .texCoord = {0.0f, 0.0f},
+        },
+        common::Vertex{
+            .pos = {0.8f,  0.8f, 0.0f},
+            .texCoord = {1.0f, 1.0f},
+        },
+        common::Vertex{
+            .pos = {0.8f, -0.8f, 0.0f},
+            .texCoord = {1.0f, 0.0f},
+        },
+    };
     std::vector<uint32_t> indices = {
         0, 1, 2, 3, 2, 1 
     };
 
-    //Should this be a single function? Resource manager would deal with staging buffer.
-    auto stageBuffer = resourceManager->createBuffer(BufferType::eStageBuffer, sizeof(float) * points.size());
-    resourceManager->insertDataBuffer(stageBuffer, sizeof(float) * points.size(), points.data());
-    vertexBuffer = resourceManager->createBuffer(BufferType::eVertexBuffer, sizeof(float) * points.size());
-    resourceManager->copyBuffers(stageBuffer, vertexBuffer, sizeof(float) * points.size());
 
-    indexBuffer = resourceManager->createBuffer(BufferType::eIndexBuffer, sizeof(uint32_t) * indices.size());
-    resourceManager->insertDataBuffer(stageBuffer, sizeof(uint32_t) * indices.size(), indices.data());
-    resourceManager->copyBuffers(stageBuffer, indexBuffer, sizeof(uint32_t) * indices.size());
+    common::Mesh mesh{
+        .indices = indices,
+        .vertices = vertex_points
+    };
+    auto meshId = addMesh(&mesh);
 
     int x,
         y,
         channels;
     auto file_data = stbi_load("/home/orvergon/myen/assets/textures/simple_texture.png", &x, &y, &channels, STBI_rgb_alpha);
-    auto size_data = x * y * channels;
-    auto stageBuffer3 = resourceManager->createBuffer(BufferType::eStageBuffer, size_data);
-    resourceManager->insertDataBuffer(stageBuffer3, size_data, file_data);
+    auto data_size = x * y * channels;
+
+    common::Texture texture{
+        .data = file_data,
+        .data_size = data_size,
+        .height = y,
+        .width = x,
+        .channels = channels,
+    };
+    auto modelId_hardcoded = addModel(meshId, glm::vec3(0.0f), glm::vec3(0.0f), &texture);
+}
+
+RenderBackend::~RenderBackend()
+{
+    instance.destroy();
+}
+
+
+MeshId RenderBackend::addMesh(common::Mesh *common_mesh)
+{
+    auto vertexBufferSize = sizeof(common::Vertex) * common_mesh->vertices.size();
+    auto stageBuffer = resourceManager->createBuffer(BufferType::eStageBuffer, vertexBufferSize);
+    resourceManager->insertDataBuffer(stageBuffer, vertexBufferSize, common_mesh->vertices.data());
+    auto vertexBuffer = resourceManager->createBuffer(BufferType::eVertexBuffer, vertexBufferSize);
+    resourceManager->copyBuffers(stageBuffer, vertexBuffer, vertexBufferSize);
+
+    auto indexBufferSize = sizeof(uint32_t) * common_mesh->indices.size();
+    auto indexBuffer = resourceManager->createBuffer(BufferType::eIndexBuffer, indexBufferSize);
+    resourceManager->insertDataBuffer(stageBuffer, indexBufferSize, common_mesh->indices.data());
+    resourceManager->copyBuffers(stageBuffer, indexBuffer, indexBufferSize);
+
+    Mesh mesh{
+        .vertexBufferId = vertexBuffer,
+        .indexBufferId = indexBuffer,
+        .vertexCount = common_mesh->vertices.size(),
+        .indexCount = common_mesh->indices.size(),
+    };
+
+    static MeshId id = 0;
+    std::cout << "MeshId: " << id << std::endl;
+    std::cout << "\tvertex number: " << common_mesh->vertices.size() << std::endl;
+    std::cout << "\tindex number: " << common_mesh->indices.size() << std::endl;
+    meshes[id] = mesh;
+    return id++;
+}
+
+
+ModelId RenderBackend::addModel(MeshId mesh, glm::vec3 position,
+                                glm::vec3 rotation, common::Texture *texture)
+{
+    std::cout << "New model, MeshId: " << mesh << std::endl;
+    //Texture Stuff
+    std::cout << "\ttexture: " << std::endl;
+    std::cout << "\t\t: " << std::endl;
+    auto textureStageBuffer = resourceManager->createBuffer(BufferType::eStageBuffer, texture->data_size);
+    resourceManager->insertDataBuffer(textureStageBuffer, texture->data_size, texture->data);
 
     auto extent = vk::Extent2D{
-        .width = static_cast<uint32_t>(x),
-        .height = static_cast<uint32_t>(y)
+        .width = static_cast<uint32_t>(texture->width),
+        .height = static_cast<uint32_t>(texture->height)
     };
     auto image = resourceManager->createImage(extent, ImageType::eTexture);
-    resourceManager->copyBufferToImage(stageBuffer3, image, extent);
+    resourceManager->copyBufferToImage(textureStageBuffer, image, extent);
     vk::SamplerCreateInfo samplerInfo{
         .magFilter = vk::Filter::eLinear,
         .minFilter = vk::Filter::eLinear,
@@ -1308,9 +1381,10 @@ RenderBackend::RenderBackend(common::Window *window) : window(window)
         .borderColor = vk::BorderColor::eIntOpaqueBlack,
         .unnormalizedCoordinates = false,
     };
-    sampler = device.createSampler(samplerInfo);
-    imageView = resourceManager->getImageView(image);
+    auto sampler = device.createSampler(samplerInfo);
+    auto imageView = resourceManager->getImageView(image);
 
+    //Pipeline Stuff
     auto layout = descriptorManager->CreateLayout({
         vk::DescriptorSetLayoutBinding {
             .binding = 0,
@@ -1332,19 +1406,15 @@ RenderBackend::RenderBackend(common::Window *window) : window(window)
             .pImmutableSamplers = &sampler,
         }
     });
-    descriptorManager->preAllocateDescriptorSets(layout, 100);
+    descriptorManager->preAllocateDescriptorSets(layout, 2);
 
-    pipelineManager = new PipelineManager(device, descriptorManager);
-    pipelineid = pipelineManager->CreatePipeline({
+    auto pipelineid = pipelineManager->CreatePipeline({
         .vertexShaderPath   = "/home/orvergon/myen/assets/default-shaders/vert",
         .fragmentShaderPath = "/home/orvergon/myen/assets/default-shaders/frag",
-        //Será que não dá pra automatizar essa parte?
-        //Falar os attribs, location incrementar automaticamente
-        //stride ser setado automaticamente
-        .vertexBinds = std::vector<vk::VertexInputBindingDescription>{ 
+        .vertexBinds = std::vector<vk::VertexInputBindingDescription>{
             vk::VertexInputBindingDescription{
                 .binding = 0,
-                .stride = static_cast<uint32_t>(sizeof(float) * 5),
+                .stride = static_cast<uint32_t>(sizeof(common::Vertex)),
                 .inputRate = vk::VertexInputRate::eVertex,
             }
         },
@@ -1359,7 +1429,7 @@ RenderBackend::RenderBackend(common::Window *window) : window(window)
                 .location = 1,
                 .binding = 0,
                 .format = vk::Format::eR32G32Sfloat,
-                .offset = sizeof(float) * 3,
+                .offset = offsetof(common::Vertex, texCoord),
             }
         },
         .depthStencilStateCreateInfo = vk::PipelineDepthStencilStateCreateInfo{
@@ -1377,23 +1447,35 @@ RenderBackend::RenderBackend(common::Window *window) : window(window)
         .layoutIds = std::vector<DSLayoutId> {layout},
     });
 
-    camera = common::Camera{
-        .cameraPos = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-    };
-
-    frameUniformBuffers[0] = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(FrameUniform));
-    frameUniformBuffers[1] = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(FrameUniform));
-    objUniformBuffers[0] = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(ObjectUniform));
-    objUniformBuffers[1] = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(ObjectUniform));
-
+    DSId descriptors[2];
     descriptors[0] = descriptorManager->getFreeDS(layout);
     descriptors[1] = descriptorManager->getFreeDS(layout);
+
+    static ModelId id = 0;
+    Model model{
+        .id = id,
+        .meshId = mesh,
+        .position = position,
+        .rotation = rotation,
+        .texture = new Texture{
+            .image = image,
+            .imageView = imageView,
+            .sampler = sampler
+        },
+        .pipeline = pipelineid,
+        .descriptors = {
+            descriptors[0],
+            descriptors[1]
+        },
+        .uniformBuffers = {
+            resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(ObjectUniform)),
+            resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(ObjectUniform))
+        },
+    };
+    models[id] = model;
+    return id++;
 }
 
-RenderBackend::~RenderBackend()
-{
-    instance.destroy();
-}
 
 void RenderBackend::drawFrame()
 {
@@ -1438,6 +1520,8 @@ void RenderBackend::drawFrame()
     commandBuffer.setScissor(0, 1, &sissor);
     //############# </frame render boilerplate> ###############
 
+
+
     //Render
     camera.proj = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
     camera.view = glm::translate(glm::mat4(1.0f), glm::vec3(-camera.cameraPos));
@@ -1449,49 +1533,58 @@ void RenderBackend::drawFrame()
     };
     resourceManager->insertDataBuffer(frameUniformBuffers[frame], sizeof(FrameUniform), &frameUniform);
 
-    static glm::vec3 pos = glm::vec3(0.0f, 0.0f, -2.0f);
-    ObjectUniform objUniform{
-        .model = glm::translate(glm::mat4(1.0f), pos),
-    };
-    resourceManager->insertDataBuffer(objUniformBuffers[frame], sizeof(ObjectUniform), &objUniform);
 
-    descriptorManager->updateDS(descriptors[frame], std::vector<WriteDescriptorInfo> {
-        WriteDescriptorInfo{
-            .bufferInfo = vk::DescriptorBufferInfo{
-                .buffer = resourceManager->getBuffer(frameUniformBuffers[frame]),
-                .offset = 0,
-                .range = sizeof(frameUniform), 
-                //TODO: could this be something like getBufferRange?
-                //or maybe typed buffers
+
+
+    for(auto& [modelId, model]: models){
+        ObjectUniform objUniform = ObjectUniform{
+            .model = glm::translate(glm::mat4(1.0f), models[modelId].position),
+        };
+        resourceManager->insertDataBuffer(models[modelId].uniformBuffers[frame], sizeof(ObjectUniform), &objUniform);
+        descriptorManager->updateDS(models[modelId].descriptors[frame], std::vector<WriteDescriptorInfo> {
+            WriteDescriptorInfo{
+                .bufferInfo = vk::DescriptorBufferInfo{
+                    .buffer = resourceManager->getBuffer(frameUniformBuffers[frame]),
+                    .offset = 0,
+                    .range = sizeof(frameUniform), 
+                    //TODO: could this be something like getBufferRange?
+                    //or maybe typed buffers
+                },
             },
-        },
-        WriteDescriptorInfo{
-            .bufferInfo = vk::DescriptorBufferInfo{
-                .buffer = resourceManager->getBuffer(objUniformBuffers[frame]),
-                .offset = 0,
-                .range = sizeof(objUniform),
+            WriteDescriptorInfo{
+                .bufferInfo = vk::DescriptorBufferInfo{
+                    .buffer = resourceManager->getBuffer(models[modelId].uniformBuffers[frame]),
+                    .offset = 0,
+                    .range = sizeof(objUniform),
+                },
             },
-        },
-        WriteDescriptorInfo{
-            .imageInfo = vk::DescriptorImageInfo{
-                .sampler = sampler,
-                .imageView = imageView,
-                .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
-            }
-        },
-    });
+            WriteDescriptorInfo{
+                .imageInfo = vk::DescriptorImageInfo{
+                    .sampler = models[modelId].texture->sampler,
+                    .imageView = models[modelId].texture->imageView,
+                    .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+                }
+            },
+        });
 
-    std::vector<vk::Buffer> buffers{resourceManager->getBuffer(vertexBuffer)};
-    std::vector<vk::DeviceSize> offsets{vk::DeviceSize(0)};
-    commandBuffer.bindVertexBuffers(0, buffers, offsets);
-    commandBuffer.bindIndexBuffer(resourceManager->getBuffer(indexBuffer), vk::DeviceSize(0), vk::IndexType::eUint32);
+        auto mesh = meshes[models[modelId].meshId];
+        std::vector<vk::Buffer> buffers{resourceManager->getBuffer(mesh.vertexBufferId)};
+        std::vector<vk::DeviceSize> offsets{vk::DeviceSize(0)};
+        commandBuffer.bindVertexBuffers(0, buffers, offsets);
+        commandBuffer.bindIndexBuffer(resourceManager->getBuffer(mesh.indexBufferId), vk::DeviceSize(0), vk::IndexType::eUint32);
 
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipelineManager->getPipeline(pipelineid));
-    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-                     pipelineManager->getPipelineLayout(pipelineid),
-                     0,
-                     std::vector<vk::DescriptorSet>{descriptorManager->getDS(descriptors[frame])}, nullptr);
-    commandBuffer.drawIndexed(6, 1, 0, 0, 0);
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipelineManager->getPipeline(models[modelId].pipeline));
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+                        pipelineManager->getPipelineLayout(models[modelId].pipeline),
+                        0,
+                        std::vector<vk::DescriptorSet>{descriptorManager->getDS(models[modelId].descriptors[frame])}, nullptr);
+        commandBuffer.drawIndexed(mesh.indexCount, 1, 0, 0, 0);
+    }
+    
+
+    
+
+
 
     //ImGui stuff
     ImGui_ImplVulkan_NewFrame();
@@ -1508,9 +1601,9 @@ void RenderBackend::drawFrame()
     ImGui::DragFloat("Cam.y", &camera.cameraPos.y, 0.005f);
     ImGui::DragFloat("Cam.z", &camera.cameraPos.z, 0.005f);
 
-    ImGui::DragFloat("Obj.x", &pos.x, 0.005f);
-    ImGui::DragFloat("Obj.y", &pos.y, 0.005f);
-    ImGui::DragFloat("Obj.z", &pos.z, 0.005f);
+    //ImGui::DragFloat("Obj.x", &models[modelId_hardcoded].position.x, 0.005f);
+    //ImGui::DragFloat("Obj.y", &models[modelId_hardcoded].position.y, 0.005f);
+    //ImGui::DragFloat("Obj.z", &models[modelId_hardcoded].position.z, 0.005f);
     ImGui::End();
     
     ImGui::Render();

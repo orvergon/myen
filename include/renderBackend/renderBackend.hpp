@@ -6,6 +6,7 @@
 #pragma once
 
 #include <cstdint>
+#include <sys/types.h>
 #include <unordered_map>
 #include <vector>
 #include <stack>
@@ -179,6 +180,38 @@ private:
 };
 
 
+struct Texture {
+    ImageId image;
+    vk::ImageView imageView;
+    vk::Sampler sampler;
+};
+
+
+typedef uint64_t MeshId;
+struct Mesh {
+    BufferId vertexBufferId;
+    BufferId indexBufferId;
+    uint64_t vertexCount;
+    uint64_t indexCount;
+};
+
+
+typedef uint64_t ModelId;
+struct Model {
+    ModelId id;
+    MeshId meshId;
+    glm::vec3 position;
+    glm::vec3 rotation;
+
+    Texture* texture;
+
+    PipelineID pipeline;
+    
+    DSId descriptors[2];
+    BufferId uniformBuffers[2];
+};
+
+
 class RenderBackend
 {
 public:
@@ -186,6 +219,12 @@ public:
     ~RenderBackend();
 
     void drawFrame();
+    MeshId addMesh(common::Mesh* mesh);
+    ModelId addModel(MeshId mesh,
+                 glm::vec3 position,
+                 glm::vec3 rotation,
+                 common::Texture* texture);
+    
     common::Camera camera; //should this be a pointer?
 private:
     vk::Instance instance;
@@ -203,6 +242,8 @@ private:
     std::vector<vk::Semaphore> imageAvailableSemaphores;
     std::vector<vk::Semaphore> renderFinishedSemaphores;
     std::vector<BufferId> commandBuffers;
+    std::unordered_map<MeshId, Mesh> meshes;
+    std::unordered_map<ModelId, Model> models;
     vk::Queue graphicsQueue;
     vk::Queue presentQueue;
     vk::RenderPass renderPass;

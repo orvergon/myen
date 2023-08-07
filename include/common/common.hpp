@@ -8,8 +8,8 @@
 namespace common{
 struct Vertex{
     glm::vec3 pos;
-    glm::vec3 normal;
-    glm::vec3 color;
+    //glm::vec3 normal;
+    //glm::vec3 color;
     glm::vec2 texCoord;
 };
 
@@ -20,11 +20,12 @@ struct Mesh{
 
 struct Node{
     std::string nome;
-    std::vector<Mesh> mesh;
+    Mesh mesh;
 };
 
 struct Texture{
     unsigned char* data;
+    int data_size;
     int height;
     int width;
     int channels;

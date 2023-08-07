@@ -17,6 +17,7 @@ include_directories(myen
   include/
   include/common/
   include/renderBackend/
+  lib/
   ${IMGUI_FOLDER}
   ${IMGUI_BACKENDS}
   ${RP3D_INCLUDES}
