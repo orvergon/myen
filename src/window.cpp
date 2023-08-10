@@ -17,7 +17,7 @@ Window::Window()
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
     glfwWindowHint(GLFW_FLOATING, GLFW_TRUE);
-    window = glfwCreateWindow(1280, 720, "Vulkan window", nullptr, nullptr);
+    window = glfwCreateWindow(1600, 900, "Vulkan window", nullptr, nullptr);
     windowPointer = (void*) window;
 
     if (glfwRawMouseMotionSupported())

@@ -224,6 +224,7 @@ public:
                  glm::vec3 position,
                  glm::vec3 rotation,
                  common::Texture* texture);
+    void updateModelPosition(ModelId model, glm::vec3 position);
     
     common::Camera camera; //should this be a pointer?
 private:

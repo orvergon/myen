@@ -70,6 +70,28 @@ std::vector<ushort> get_attribute_ushort(int accessorId, tinygltf::Primitive& pr
 
 Myen::Myen()
 {
+    window = new Window();
+    renderBackend = new RenderBackend::RenderBackend(window);
+}
+
+Myen::~Myen()
+{}
+
+bool Myen::nextFrame() {
+    if(window->shouldClose()) {
+        return false;
+    }
+
+    for(auto& [entityId, entity]: entities){
+        renderBackend->updateModelPosition(entity.modelId, entity.pos);
+    }
+    
+    renderBackend->drawFrame();
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    return true;
+}
+
+ModelId Myen::importMesh(std::string gltf_path) {
     tinygltf::Model model;
     tinygltf::TinyGLTF loader;
     std::string err;
@@ -78,7 +100,7 @@ Myen::Myen()
     common::Mesh m;
     common::Texture t;
     //bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, "/home/orvergon/myen/assets/obj/plane/plane.glb");
-    //bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, "/home/orvergon/myen/assets/obj/monke/monke.glb");
+    bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, "/home/orvergon/myen/assets/obj/monke/monke.glb");
     for (auto& mesh : model.meshes) {
         auto& primitive = mesh.primitives[0]; //There can me more primitives
 
@@ -131,20 +153,35 @@ Myen::Myen()
         printf("Failed to parse glTF\n");
     }
 
-    //return;
-    auto window = new Window();
-    auto renderBackend = new RenderBackend::RenderBackend(window);
     auto meshId = renderBackend->addMesh(&m);
-    auto modelId = renderBackend->addModel(meshId, glm::vec3(1.0f), glm::vec3(0.0f), &t);
-    while(!window->shouldClose())
-    {
-        renderBackend->drawFrame();
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    }
+    //auto modelId = renderBackend->addModel(meshId, glm::vec3(1.0f), glm::vec3(0.0f), &t);
+    static ModelId id = 0;
+    models[id] = Model{
+	.id = id,
+	.meshId = meshId,
+	.mesh = m,
+	.texture = t
+    };
+    return id++;
 }
 
-Myen::~Myen()
-{}
+
+EntityId Myen::createEntity(ModelId modelId, glm::vec3 pos) {
+    auto model = models[modelId];
+    auto entityId = renderBackend->addModel(model.meshId, pos, glm::vec3(0.0f), &model.texture);
+    static EntityId id = 0;
+    entities[id] = Entity{
+	.id = id,
+	.modelId = entityId,
+    };
+    return id++;
+}
+
+
+Entity* Myen::getEntity(EntityId id) {
+    return &entities[id];
+}
+
 };
 
 

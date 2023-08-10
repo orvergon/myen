@@ -18,5 +18,12 @@ void timeSync()
 int main()
 {
     myen::Myen myen{};
+    auto model = myen.importMesh("/home/orvergon/myen/assets/obj/monke/monke.glb");
+    auto entityId = myen.createEntity(model, glm::vec3(1.0f));
+    auto entity = myen.getEntity(entityId);
+    while(myen.nextFrame()){
+        entity->pos += glm::vec3(0.001f, 0.0f, 0.0f);
+	continue;
+    }
     std::cout << "Bye bye 👋" << std::endl;
 }
