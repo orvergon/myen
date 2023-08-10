@@ -99,8 +99,7 @@ ModelId Myen::importMesh(std::string gltf_path) {
 
     common::Mesh m;
     common::Texture t;
-    //bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, "/home/orvergon/myen/assets/obj/plane/plane.glb");
-    bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, "/home/orvergon/myen/assets/obj/monke/monke.glb");
+    bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, gltf_path);
     for (auto& mesh : model.meshes) {
         auto& primitive = mesh.primitives[0]; //There can me more primitives
 
