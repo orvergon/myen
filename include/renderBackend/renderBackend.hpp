@@ -6,6 +6,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <sys/types.h>
 #include <unordered_map>
 #include <vector>
@@ -225,6 +226,7 @@ public:
                  glm::vec3 rotation,
                  common::Texture* texture);
     void updateModelPosition(ModelId model, glm::vec3 position);
+    void addUICommands(std::function<void(void)> function);
     
     common::Camera camera; //should this be a pointer?
 private:
@@ -249,6 +251,7 @@ private:
     vk::Queue presentQueue;
     vk::RenderPass renderPass;
     std::vector<vk::Framebuffer> framebuffers;
+    std::vector<std::function<void(void)>> functions;
     BufferId vertexBuffer;
     BufferId indexBuffer;
 };

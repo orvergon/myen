@@ -1482,6 +1482,11 @@ void RenderBackend::updateModelPosition(ModelId model, glm::vec3 position) {
 }
 
 
+void RenderBackend::addUICommands(std::function<void(void)> function) {
+    functions.push_back(function);
+}
+
+
 void RenderBackend::drawFrame()
 {
     //############# <frame render boilerplate> ###############
@@ -1610,6 +1615,10 @@ void RenderBackend::drawFrame()
     //ImGui::DragFloat("Obj.y", &models[modelId_hardcoded].position.y, 0.005f);
     //ImGui::DragFloat("Obj.z", &models[modelId_hardcoded].position.z, 0.005f);
     ImGui::End();
+
+    for(int i = 0; i < functions.size(); i++){
+	functions[i]();
+    }
     
     ImGui::Render();
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
