@@ -1,11 +1,14 @@
 #include "myen.hpp"
 
+#include "GLFW/glfw3.h"
 #include "common.hpp"
 #include "stb_image.h"
 #include "window.hpp"
 #include "renderBackend.hpp"
 #include <cstdint>
 #include <glm/fwd.hpp>
+#include <glm/geometric.hpp>
+#include <glm/trigonometric.hpp>
 #include <immintrin.h>
 #include <iostream>
 #include <chrono>
@@ -18,10 +21,16 @@
 #include <thread>
 #include <vector>
 
+#include "glm/mat4x4.hpp"
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <vulkan/vulkan_enums.hpp>
+
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "tiny_gltf.h"
+#include "imgui.h"
 
 namespace myen {
 
@@ -67,11 +76,48 @@ std::vector<ushort> get_attribute_ushort(int accessorId, tinygltf::Primitive& pr
     return attributes;
 }
 
+bool skip_cursor_pos = false;
+double cursor_x = 0.0f;
+double cursor_y = 0.0f;
+
+double old_cursor_x = 0.0f;
+double old_cursor_y = 0.0f;
+
+void cursor_enter_callback(GLFWwindow* window, int entered)
+{
+    if (entered)
+    {
+
+    }
+    else
+    {
+
+    }
+}
+
+void Camera::updateCamera() {
+    proj = glm::perspective(FOV, aspectRatio, nearPlane, farPlane);
+    view = glm::translate(glm::mat4(1.0f), -glm::vec3(cameraPos.x, cameraPos.y, cameraPos.z));
+}
 
 Myen::Myen()
 {
     window = new Window();
-    renderBackend = new RenderBackend::RenderBackend(window);
+    glfwSetCursorEnterCallback(window->window, cursor_enter_callback);
+    glfwGetCursorPos(window->window, &cursor_x, &cursor_y);
+    old_cursor_x = cursor_x;
+    old_cursor_y = cursor_y;
+    auto surface_size = window->getSurfaceSize();
+    camera = new Camera();
+    camera->aspectRatio = (float)surface_size.width / (float)surface_size.height;
+
+    renderBackend = new RenderBackend::RenderBackend(window, camera);
+
+    renderBackend->addUICommands([&]{
+	ImGui::Begin("Janela Teste");
+	ImGui::Text("(%f, %f)", cursor_x - old_cursor_x, cursor_y - old_cursor_y);
+	ImGui::End();
+    });
 }
 
 Myen::~Myen()
@@ -82,10 +128,41 @@ bool Myen::nextFrame() {
         return false;
     }
 
+    old_cursor_x = cursor_x;
+    old_cursor_y = cursor_y;
+    glfwGetCursorPos(window->window, &cursor_x, &cursor_y);
+
+    glm::vec3 cameraMovement = glm::vec3(0.0f);
+    if(glfwGetKey(window->window, GLFW_KEY_W))
+    {
+	cameraMovement += glm::vec3(0.0f, 0.0f, -1.0f);
+    }
+    if(glfwGetKey(window->window, GLFW_KEY_S))
+    {
+	cameraMovement += glm::vec3(0.0f, 0.0f, 1.0f);
+    }
+    if(glfwGetKey(window->window, GLFW_KEY_A))
+    {
+	cameraMovement += glm::vec3(-1.0f, 0.0f, 0.0f);
+    }
+    if(glfwGetKey(window->window, GLFW_KEY_D))
+    {
+	cameraMovement += glm::vec3(1.0f, 0.0f, 0.0f);
+    }
+    if(cameraMovement != glm::vec3(0.0f))
+    {
+	cameraMovement = glm::normalize(cameraMovement);
+	cameraMovement *= 0.3f;
+	camera->cameraPos.x += cameraMovement.x;
+	camera->cameraPos.y += cameraMovement.y;
+	camera->cameraPos.z += cameraMovement.z;
+    }
+
     for(auto& [entityId, entity]: entities){
         renderBackend->updateModelPosition(entity.modelId, entity.pos);
     }
     
+    camera->updateCamera();
     renderBackend->drawFrame();
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
     return true;

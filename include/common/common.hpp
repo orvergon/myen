@@ -33,7 +33,7 @@ struct Texture{
 struct Camera{
     glm::mat4 view;
     glm::mat4 proj;
-    glm::vec4 cameraPos;
+    glm::vec4 cameraPos = glm::vec4(0.0f);
 };
 
 class Window{

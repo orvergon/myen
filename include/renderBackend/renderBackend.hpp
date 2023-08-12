@@ -216,7 +216,7 @@ struct Model {
 class RenderBackend
 {
 public:
-    RenderBackend(common::Window* window);
+    RenderBackend(common::Window* window, common::Camera* camera);
     ~RenderBackend();
 
     void drawFrame();
@@ -228,7 +228,7 @@ public:
     void updateModelPosition(ModelId model, glm::vec3 position);
     void addUICommands(std::function<void(void)> function);
     
-    common::Camera camera; //should this be a pointer?
+    common::Camera* camera; //should this be a pointer?
 private:
     vk::Instance instance;
     vk::Device device;

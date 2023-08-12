@@ -22,7 +22,6 @@ int main()
     auto entityId = myen.createEntity(model, glm::vec3(1.0f));
     auto entity = myen.getEntity(entityId);
     while(myen.nextFrame()){
-        entity->pos += glm::vec3(0.001f, 0.0f, 0.0f);
 	continue;
     }
     std::cout << "Bye bye 👋" << std::endl;

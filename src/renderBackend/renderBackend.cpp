@@ -929,13 +929,6 @@ PipelineID pipelineid;
 BufferId uniformBufferId;
 DSId descriptors[2];
 
-struct BasicFrameUniformStruct {
-    glm::vec4 cameraPos;
-    glm::mat4 proj;
-    glm::mat4 view;
-};
-BasicFrameUniformStruct basicFrameUniform{glm::vec4{0.0f, 0.0f, 0.0f, 0.0f}};
-
 vk::Instance instance;
 vk::PhysicalDevice physicalDevice;
 vk::Device device;
@@ -961,7 +954,7 @@ struct ObjectUniform {
     glm::mat4 model;
 };
 
-RenderBackend::RenderBackend(common::Window *window) : window(window)
+RenderBackend::RenderBackend(common::Window* window, common::Camera* camera) : window(window), camera(camera)
 {
     //======== Vulkan Initialization ========
     //Vulkan Init
@@ -1259,11 +1252,6 @@ RenderBackend::RenderBackend(common::Window *window) : window(window)
     commands->EndSingleTimeCommand(commandBuffer, true);
     ImGui_ImplVulkan_DestroyFontUploadObjects();
 
-    //Should this be a single function? Resource manager would deal with staging buffer.
-    camera = common::Camera{
-        .cameraPos = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
-    };
-
     frameUniformBuffers[0] = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(FrameUniform));
     frameUniformBuffers[1] = resourceManager->createBuffer(BufferType::eUniformBuffer, sizeof(FrameUniform));
 
@@ -1533,13 +1521,13 @@ void RenderBackend::drawFrame()
 
 
     //Render
-    camera.proj = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    camera.view = glm::translate(glm::mat4(1.0f), glm::vec3(-camera.cameraPos));
+    //camera->proj = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+    //camera->view = glm::translate(glm::mat4(1.0f), glm::vec3(-camera->cameraPos));
 
     FrameUniform frameUniform{
-        .cameraPosition = camera.cameraPos,
-        .cameraProjection = camera.proj,
-        .cameraView = camera.view,
+        .cameraPosition = camera->cameraPos,
+        .cameraProjection = camera->proj,
+        .cameraView = camera->view,
     };
     resourceManager->insertDataBuffer(frameUniformBuffers[frame], sizeof(FrameUniform), &frameUniform);
 
@@ -1607,9 +1595,9 @@ void RenderBackend::drawFrame()
     static float y = 0;
     static float z = 0;
     ImGui::Begin("Janela");
-    ImGui::DragFloat("Cam.x", &camera.cameraPos.x, 0.005f);
-    ImGui::DragFloat("Cam.y", &camera.cameraPos.y, 0.005f);
-    ImGui::DragFloat("Cam.z", &camera.cameraPos.z, 0.005f);
+    ImGui::DragFloat("Cam.x", &camera->cameraPos.x, 0.005f);
+    ImGui::DragFloat("Cam.y", &camera->cameraPos.y, 0.005f);
+    ImGui::DragFloat("Cam.z", &camera->cameraPos.z, 0.005f);
 
     //ImGui::DragFloat("Obj.x", &models[modelId_hardcoded].position.x, 0.005f);
     //ImGui::DragFloat("Obj.y", &models[modelId_hardcoded].position.y, 0.005f);
