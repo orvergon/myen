@@ -77,11 +77,8 @@ std::vector<ushort> get_attribute_ushort(int accessorId, tinygltf::Primitive& pr
 }
 
 bool skip_cursor_pos = false;
-double cursor_x = 0.0f;
-double cursor_y = 0.0f;
-
-double old_cursor_x = 0.0f;
-double old_cursor_y = 0.0f;
+glm::vec2 cursor_pos;
+glm::vec2 old_cursor_pos;
 
 void cursor_enter_callback(GLFWwindow* window, int entered)
 {
@@ -104,9 +101,8 @@ Myen::Myen()
 {
     window = new Window();
     glfwSetCursorEnterCallback(window->window, cursor_enter_callback);
-    glfwGetCursorPos(window->window, &cursor_x, &cursor_y);
-    old_cursor_x = cursor_x;
-    old_cursor_y = cursor_y;
+    cursor_pos = window->getMousePosition();
+    old_cursor_pos = cursor_pos;
     auto surface_size = window->getSurfaceSize();
     camera = new Camera();
     camera->aspectRatio = (float)surface_size.width / (float)surface_size.height;
@@ -115,7 +111,8 @@ Myen::Myen()
 
     renderBackend->addUICommands([&]{
 	ImGui::Begin("Janela Teste");
-	ImGui::Text("(%f, %f)", cursor_x - old_cursor_x, cursor_y - old_cursor_y);
+	ImGui::Text("(%f, %f)", cursor_pos.x - old_cursor_pos.x, cursor_pos.y - old_cursor_pos.y);
+	ImGui::Text("(%f, %f)", cursor_pos.x, cursor_pos.y);
 	ImGui::End();
     });
 }
@@ -128,9 +125,13 @@ bool Myen::nextFrame() {
         return false;
     }
 
-    old_cursor_x = cursor_x;
-    old_cursor_y = cursor_y;
-    glfwGetCursorPos(window->window, &cursor_x, &cursor_y);
+    old_cursor_pos = cursor_pos;
+    cursor_pos = window->getMousePosition();
+
+    auto keyEvents = window->getKeyEvents();
+    for(auto& keyEvent : keyEvents){
+        std::cout << keyEvent.keyName << std::endl;
+    }
 
     glm::vec3 cameraMovement = glm::vec3(0.0f);
     if(glfwGetKey(window->window, GLFW_KEY_W))

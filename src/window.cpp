@@ -2,12 +2,15 @@
 #include "common.hpp"
 #include <array>
 #include <cstdint>
+#include <glm/fwd.hpp>
 #include <ostream>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
 
 #include <iostream>
+
+std::vector<KeyEvent> keyEvents;
 
 Window::Window()
 {
@@ -26,7 +29,6 @@ Window::Window()
     }
 
     glfwSetWindowUserPointer(window, this);
-    //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     glfwSetCursorPosCallback(window, Window::mouseCallback);
     glfwSetKeyCallback(window, Window::keyCallback);
 }
@@ -82,6 +84,20 @@ std::array<float, 2> Window::getMouseOffset()
     return aux;
 }
 
+glm::vec2 Window::getMousePosition()
+{
+    double x, y;
+    glfwGetCursorPos(window, &x, &y);
+    return glm::vec2{x, y};
+}
+
+std::vector<KeyEvent> Window::getKeyEvents()
+{
+    auto events = keyEvents;
+    keyEvents.clear();
+    return events;
+}
+
 static bool useCursor = true;
 
 void Window::mouseCallback(GLFWwindow* window, double xpos, double ypos)
@@ -100,15 +116,26 @@ void Window::mouseCallback(GLFWwindow* window, double xpos, double ypos)
 
 void Window::keyCallback(GLFWwindow* window, int key, int scancode, int actions, int mods)
 {
-    Window* myWindow = (Window*) glfwGetWindowUserPointer(window);
-    if(key == GLFW_KEY_F1 && actions == GLFW_PRESS)
+    //TODO: this is shitty, 1 and numpad 1 are equal;
+    auto key_name = glfwGetKeyName(key, scancode);
+    if(key_name != NULL)
     {
-	useCursor = !useCursor;
-	//glfwSetCursorPosCallback(window, setCallback ? Window::mouseCallback : NULL);
-	glfwSetInputMode(window, GLFW_CURSOR, useCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+	if(actions == GLFW_RELEASE)
+	{
+	    keyEvents.push_back(KeyEvent{
+		    .keyName = key_name,
+		    .keyStatus = KeyStatus::eRELEASED
+		});
+	}
+	else
+	{
+	    keyEvents.push_back(KeyEvent{
+		    .keyName = key_name,
+		    .keyStatus = KeyStatus::ePRESSED
+		});
+	}
+	std::cout << key_name << ", " << scancode << ", " << key << std::endl;
     }
-
-    bool value = actions == GLFW_RELEASE ? false : true;
-
-    //myWindow->keys[key] = value;
+    else 
+	std::cout << " , " << scancode << ", " << key << std::endl;
 }

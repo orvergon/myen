@@ -1,5 +1,6 @@
 #pragma once
 
+#include <glm/fwd.hpp>
 #include <unordered_map>
 #include <vector>
 #include <array>
@@ -10,6 +11,15 @@
 //Foward declarations
 class GLFWwindow;
 
+enum KeyStatus {
+    ePRESSED,
+    eRELEASED,
+};
+
+struct KeyEvent {
+    std::string keyName;
+    KeyStatus keyStatus;
+};
 
 struct Window : common::Window
 {
@@ -21,11 +31,12 @@ public:
     ~Window();
 
     bool shouldClose();
-    //void createSurface(VkInstance instance, VkSurfaceKHR* surface);
     vk::SurfaceKHR createSurface(vk::Instance instance);
     std::vector<const char*> getRequiredVulkanExtensions();
     vk::Extent2D getSurfaceSize();
-    std::array<float , 2> getMouseOffset();
+    std::array<float, 2> getMouseOffset();
+    glm::vec2 getMousePosition();
+    std::vector<KeyEvent> getKeyEvents();
 
 private:
     float _xpos = 0;
