@@ -226,7 +226,7 @@ public:
                  glm::vec3 rotation,
                  common::Texture* texture);
     void updateModelPosition(ModelId model, glm::vec3 position);
-    void addUICommands(std::function<void(void)> function);
+    void addUICommands(std::string windowName, std::function<void(void)> function);
     
     common::Camera* camera; //should this be a pointer?
 private:

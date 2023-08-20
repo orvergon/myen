@@ -109,11 +109,10 @@ Myen::Myen()
 
     renderBackend = new RenderBackend::RenderBackend(window, camera);
 
-    renderBackend->addUICommands([&]{
-	ImGui::Begin("Janela Teste");
+    renderBackend->addUICommands("Mouse Position",
+    [&]{
 	ImGui::Text("(%f, %f)", cursor_pos.x - old_cursor_pos.x, cursor_pos.y - old_cursor_pos.y);
 	ImGui::Text("(%f, %f)", cursor_pos.x, cursor_pos.y);
-	ImGui::End();
     });
 }
 

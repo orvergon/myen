@@ -1470,8 +1470,12 @@ void RenderBackend::updateModelPosition(ModelId model, glm::vec3 position) {
 }
 
 
-void RenderBackend::addUICommands(std::function<void(void)> function) {
-    functions.push_back(function);
+void RenderBackend::addUICommands(std::string windowName, std::function<void(void)> function) {
+    functions.push_back([function, windowName]{
+	ImGui::Begin(windowName.c_str());
+	function();
+	ImGui::End();
+    });
 }
 
 
