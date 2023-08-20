@@ -954,6 +954,7 @@ struct ObjectUniform {
     glm::mat4 model;
 };
 
+
 RenderBackend::RenderBackend(common::Window* window, common::Camera* camera) : window(window), camera(camera)
 {
     //======== Vulkan Initialization ========
@@ -1300,6 +1301,7 @@ RenderBackend::RenderBackend(common::Window* window, common::Camera* camera) : w
     };
     auto modelId_hardcoded = addModel(meshId, glm::vec3(0.0f), glm::vec3(0.0f), &texture);
 }
+
 
 RenderBackend::~RenderBackend()
 {

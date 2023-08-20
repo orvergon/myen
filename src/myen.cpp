@@ -76,9 +76,11 @@ std::vector<ushort> get_attribute_ushort(int accessorId, tinygltf::Primitive& pr
     return attributes;
 }
 
+
 bool skip_cursor_pos = false;
 glm::vec2 cursor_pos;
 glm::vec2 old_cursor_pos;
+
 
 void cursor_enter_callback(GLFWwindow* window, int entered)
 {
@@ -92,10 +94,12 @@ void cursor_enter_callback(GLFWwindow* window, int entered)
     }
 }
 
+
 void Camera::updateCamera() {
     proj = glm::perspective(FOV, aspectRatio, nearPlane, farPlane);
     view = glm::translate(glm::mat4(1.0f), -glm::vec3(cameraPos.x, cameraPos.y, cameraPos.z));
 }
+
 
 Myen::Myen()
 {
@@ -116,6 +120,7 @@ Myen::Myen()
     });
 }
 
+
 Myen::~Myen()
 {}
 
@@ -125,6 +130,7 @@ void Myen::addUICommands(std::string windowName,
 {
     renderBackend->addUICommands(windowName, function);
 }
+
 
 bool Myen::nextFrame() {
     if(window->shouldClose()) {
@@ -183,6 +189,7 @@ bool Myen::nextFrame() {
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
     return true;
 }
+
 
 ModelId Myen::importMesh(std::string gltf_path) {
     tinygltf::Model model;
@@ -273,6 +280,7 @@ EntityId Myen::createEntity(ModelId modelId, glm::vec3 pos) {
 Entity* Myen::getEntity(EntityId id) {
     return &entities[id];
 }
+
 
 bool Myen::keyPressed(std::string key)
 {
