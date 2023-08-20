@@ -51,6 +51,7 @@ public:
     EntityId createEntity(ModelId model, glm::vec3 pos = glm::vec3(0.0f));
     Entity* getEntity(EntityId id);
     bool keyPressed(std::string key);
+    void addUICommands(std::string windowName, std::function<void(void)> function);
 
     Camera* camera;
 

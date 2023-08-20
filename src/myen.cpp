@@ -119,6 +119,13 @@ Myen::Myen()
 Myen::~Myen()
 {}
 
+
+void Myen::addUICommands(std::string windowName,
+                         std::function<void(void)> function)
+{
+    renderBackend->addUICommands(windowName, function);
+}
+
 bool Myen::nextFrame() {
     if(window->shouldClose()) {
         return false;
