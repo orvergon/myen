@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <glm/fwd.hpp>
 #include <glm/trigonometric.hpp>
+#include <string>
 #include <unordered_map>
 namespace myen {
 
@@ -49,6 +50,7 @@ public:
     ModelId importMesh(std::string gltf_path);
     EntityId createEntity(ModelId model, glm::vec3 pos = glm::vec3(0.0f));
     Entity* getEntity(EntityId id);
+    bool keyPressed(std::string key);
 
     Camera* camera;
 
@@ -57,6 +59,7 @@ private:
     RenderBackend::RenderBackend* renderBackend;
     std::unordered_map<ModelId, Model> models; 
     std::unordered_map<EntityId, Entity> entities; 
+    std::unordered_map<std::string, bool> keyPressedMap;
 };
 
 };

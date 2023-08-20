@@ -22,6 +22,10 @@ int main()
     auto entityId = myen.createEntity(model, glm::vec3(1.0f));
     auto entity = myen.getEntity(entityId);
     while(myen.nextFrame()){
+	if(myen.keyPressed("8")){
+	    std::cout << "apertou 8" << std::endl;
+	    entity->pos += glm::vec3(1.0f, 0.0f, 0.0f);
+	}
 	continue;
     }
     std::cout << "Bye bye 👋" << std::endl;

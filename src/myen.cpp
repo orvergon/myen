@@ -130,7 +130,16 @@ bool Myen::nextFrame() {
 
     auto keyEvents = window->getKeyEvents();
     for(auto& keyEvent : keyEvents){
-        std::cout << keyEvent.keyName << std::endl;
+	if(keyEvent.keyStatus == KeyStatus::ePRESSED)
+	{
+	    keyPressedMap[keyEvent.keyName] = true;
+	    std::cout << "Apertou: " << keyEvent.keyName << std::endl;
+	}
+	else
+	{
+	    keyPressedMap[keyEvent.keyName] = false;
+	    std::cout << "Soltou: " << keyEvent.keyName << std::endl;
+	}
     }
 
     glm::vec3 cameraMovement = glm::vec3(0.0f);
@@ -259,6 +268,18 @@ Entity* Myen::getEntity(EntityId id) {
     return &entities[id];
 }
 
+bool Myen::keyPressed(std::string key)
+{
+    //Trash, I'm searching the key twice
+    if(keyPressedMap.find(key) == keyPressedMap.end())
+    {
+	keyPressedMap[key] = false;
+    }
+
+    return keyPressedMap[key];
+}
+
 };
+
 
 
