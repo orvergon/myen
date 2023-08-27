@@ -17,11 +17,6 @@ struct Mesh{
     std::vector<Vertex> vertices;
 };
 
-struct Node{
-    std::string nome;
-    Mesh mesh;
-};
-
 struct Texture{
     unsigned char* data;
     int data_size;

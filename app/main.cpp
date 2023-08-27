@@ -21,20 +21,39 @@ void timeSync()
 int main()
 {
     myen::Myen myen{};
-    auto model = myen.importMesh("/home/orvergon/myen/assets/obj/monke/monke.glb");
+    auto model = myen.importGlftFile("/home/orvergon/myen/assets/obj/monke/monke.glb");
     auto entityId = myen.createEntity(model, glm::vec3(1.0f));
     auto entity = myen.getEntity(entityId);
-    auto frame = 0;
-    myen.addUICommands("teste", [&] {
-	ImGui::Text("Hi?");
-	ImGui::Text("Do closures work here? (%d)", frame);
-    });
-    while(myen.nextFrame()){
-	if(myen.keyPressed("8")){
-	    std::cout << "apertou 8" << std::endl;
-	    entity->pos += glm::vec3(1.0f, 0.0f, 0.0f);
+
+    while(myen.nextFrame())
+    {
+	//Camera movement
+	glm::vec3 cameraMovement = glm::vec3(0.0f);
+	if(myen.keyPressed("w"))
+	{
+	    cameraMovement += glm::vec3(0.0f, 0.0f, -1.0f);
 	}
-	frame++;
+	if(myen.keyPressed("s"))
+	{
+	    cameraMovement += glm::vec3(0.0f, 0.0f, 1.0f);
+	}
+	if(myen.keyPressed("a"))
+	{
+	    cameraMovement += glm::vec3(1.0f, 0.0f, 0.0f);
+	}
+	if(myen.keyPressed("d"))
+	{
+	    cameraMovement += glm::vec3(-1.0f, 0.0f, 0.0f);
+	}
+	if(cameraMovement != glm::vec3(0.0f))
+	{
+	    cameraMovement = glm::normalize(cameraMovement);
+	    cameraMovement *= 0.2f;
+	    myen.camera->cameraPos.x += cameraMovement.x;
+	    myen.camera->cameraPos.y += cameraMovement.y;
+	    myen.camera->cameraPos.z += cameraMovement.z;
+	}
     }
+
     std::cout << "Bye bye 👋" << std::endl;
 }

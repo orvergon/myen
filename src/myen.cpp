@@ -80,6 +80,7 @@ std::vector<ushort> get_attribute_ushort(int accessorId, tinygltf::Primitive& pr
 bool skip_cursor_pos = false;
 glm::vec2 cursor_pos;
 glm::vec2 old_cursor_pos;
+glm::vec2 cursor_movement = glm::vec2(0.0f);
 
 
 void cursor_enter_callback(GLFWwindow* window, int entered)
@@ -97,7 +98,8 @@ void cursor_enter_callback(GLFWwindow* window, int entered)
 
 void Camera::updateCamera() {
     proj = glm::perspective(FOV, aspectRatio, nearPlane, farPlane);
-    view = glm::translate(glm::mat4(1.0f), -glm::vec3(cameraPos.x, cameraPos.y, cameraPos.z));
+    //view = glm::translate(glm::mat4(1.0f), -glm::vec3(cameraPos.x, cameraPos.y, cameraPos.z));
+    view = glm::lookAt(glm::vec3(cameraPos), glm::vec3(cameraPos) + cameraDirection, cameraUp);
 }
 
 
@@ -115,7 +117,7 @@ Myen::Myen()
 
     renderBackend->addUICommands("Mouse Position",
     [&]{
-	ImGui::Text("(%f, %f)", cursor_pos.x - old_cursor_pos.x, cursor_pos.y - old_cursor_pos.y);
+	ImGui::Text("(%f, %f)", cursor_movement.x, cursor_movement.y);
 	ImGui::Text("(%f, %f)", cursor_pos.x, cursor_pos.y);
     });
 }
@@ -132,6 +134,18 @@ void Myen::addUICommands(std::string windowName,
 }
 
 
+glm::vec2 Myen::getMousePos()
+{
+    return cursor_pos;
+}
+
+
+glm::vec2 Myen::getMouseMovement()
+{
+    return cursor_movement;
+}
+
+
 bool Myen::nextFrame() {
     if(window->shouldClose()) {
         return false;
@@ -139,6 +153,7 @@ bool Myen::nextFrame() {
 
     old_cursor_pos = cursor_pos;
     cursor_pos = window->getMousePosition();
+    cursor_movement = cursor_pos - old_cursor_pos;
 
     auto keyEvents = window->getKeyEvents();
     for(auto& keyEvent : keyEvents){
@@ -154,34 +169,8 @@ bool Myen::nextFrame() {
 	}
     }
 
-    glm::vec3 cameraMovement = glm::vec3(0.0f);
-    if(glfwGetKey(window->window, GLFW_KEY_W))
-    {
-	cameraMovement += glm::vec3(0.0f, 0.0f, -1.0f);
-    }
-    if(glfwGetKey(window->window, GLFW_KEY_S))
-    {
-	cameraMovement += glm::vec3(0.0f, 0.0f, 1.0f);
-    }
-    if(glfwGetKey(window->window, GLFW_KEY_A))
-    {
-	cameraMovement += glm::vec3(-1.0f, 0.0f, 0.0f);
-    }
-    if(glfwGetKey(window->window, GLFW_KEY_D))
-    {
-	cameraMovement += glm::vec3(1.0f, 0.0f, 0.0f);
-    }
-    if(cameraMovement != glm::vec3(0.0f))
-    {
-	cameraMovement = glm::normalize(cameraMovement);
-	cameraMovement *= 0.3f;
-	camera->cameraPos.x += cameraMovement.x;
-	camera->cameraPos.y += cameraMovement.y;
-	camera->cameraPos.z += cameraMovement.z;
-    }
-
     for(auto& [entityId, entity]: entities){
-        renderBackend->updateModelPosition(entity.modelId, entity.pos);
+        renderBackend->updateModelPosition(entity.modelId, entity.pos, entity.rotation);
     }
     
     camera->updateCamera();
@@ -191,7 +180,7 @@ bool Myen::nextFrame() {
 }
 
 
-ModelId Myen::importMesh(std::string gltf_path) {
+ModelId Myen::importGlftFile(std::string gltf_path) {
     tinygltf::Model model;
     tinygltf::TinyGLTF loader;
     std::string err;

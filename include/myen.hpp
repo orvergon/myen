@@ -13,6 +13,11 @@ namespace myen {
 typedef uint32_t ModelId;
 typedef uint32_t EntityId;
 
+/*
+  This is an internal representation of a graphical asset.
+  Here is where all "graphical" things should be (eg. mesh, texture, etc)
+  This is what is registered in the renderer as a 
+ */
 struct Model {
     ModelId id;
     RenderBackend::MeshId meshId;
@@ -24,9 +29,10 @@ struct Model {
 struct Entity {
     EntityId id;
     glm::vec3 pos;
+    glm::vec3 rotation;
     RenderBackend::ModelId modelId; //Isso não deveria ser publico
     //precisa ter um modelId? porque eu não crio um ID de entidade e uso ele
-    //como id do model?
+    //como id do model no render?
 };
 
 struct Camera : common::Camera{
@@ -36,7 +42,10 @@ struct Camera : common::Camera{
     float aspectRatio = 16.0/9.0;
     glm::vec3 cameraDirection = glm::vec3(0.0f, 0.0f, -1.0f);
     glm::vec3 worldUp = glm::vec3(0.0f, -1.0f, 0.0f);
+    glm::vec3 cameraUp = glm::vec3(0.0f, -1.0f, 0.0f);
     glm::vec3 cameraRight;
+    float Yaw;
+    float Pitch;
     void updateCamera();
 };
 
@@ -47,11 +56,13 @@ public:
     ~Myen();
 
     bool nextFrame();
-    ModelId importMesh(std::string gltf_path);
+    ModelId importGlftFile(std::string gltf_path);
     EntityId createEntity(ModelId model, glm::vec3 pos = glm::vec3(0.0f));
     Entity* getEntity(EntityId id);
     bool keyPressed(std::string key);
     void addUICommands(std::string windowName, std::function<void(void)> function);
+    glm::vec2 getMousePos();
+    glm::vec2 getMouseMovement();
 
     Camera* camera;
 

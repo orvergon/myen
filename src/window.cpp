@@ -134,8 +134,10 @@ void Window::keyCallback(GLFWwindow* window, int key, int scancode, int actions,
 		    .keyStatus = KeyStatus::ePRESSED
 		});
 	}
-	std::cout << key_name << ", " << scancode << ", " << key << std::endl;
+	//std::cout << key_name << ", " << scancode << ", " << key << std::endl;
     }
     else 
+    {
 	std::cout << " , " << scancode << ", " << key << std::endl;
+    }
 }

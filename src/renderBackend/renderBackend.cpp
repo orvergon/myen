@@ -1467,7 +1467,7 @@ ModelId RenderBackend::addModel(MeshId mesh, glm::vec3 position,
 }
 
 
-void RenderBackend::updateModelPosition(ModelId model, glm::vec3 position) {
+void RenderBackend::updateModelPosition(ModelId model, glm::vec3 position, glm::vec3 rotation) {
     models[model].position = position;
 }
 

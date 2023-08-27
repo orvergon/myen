@@ -204,6 +204,7 @@ struct Model {
     glm::vec3 position;
     glm::vec3 rotation;
 
+   
     Texture* texture;
 
     PipelineID pipeline;
@@ -225,7 +226,7 @@ public:
                  glm::vec3 position,
                  glm::vec3 rotation,
                  common::Texture* texture);
-    void updateModelPosition(ModelId model, glm::vec3 position);
+    void updateModelPosition(ModelId model, glm::vec3 position, glm::vec3 rotation);
     void addUICommands(std::string windowName, std::function<void(void)> function);
     
     common::Camera* camera; //should this be a pointer?
