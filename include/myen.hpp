@@ -35,6 +35,7 @@ struct Entity {
     //como id do model no render?
 };
 
+//Why does common::Camera exist?
 struct Camera : common::Camera{
     float farPlane = 100.0f;
     float nearPlane = 0.1f;
@@ -44,8 +45,8 @@ struct Camera : common::Camera{
     glm::vec3 worldUp = glm::vec3(0.0f, -1.0f, 0.0f);
     glm::vec3 cameraUp = glm::vec3(0.0f, -1.0f, 0.0f);
     glm::vec3 cameraRight;
-    float Yaw;
-    float Pitch;
+    float Yaw = 0;
+    float Pitch = 0;
     void updateCamera();
 };
 

@@ -53,6 +53,14 @@ int main()
 	    myen.camera->cameraPos.y += cameraMovement.y;
 	    myen.camera->cameraPos.z += cameraMovement.z;
 	}
+
+	float sensitivity = 0.1;
+	auto mouseMovement = myen.getMouseMovement();
+	if(mouseMovement.x != 0 or mouseMovement.y != 0)
+	{
+	    myen.camera->Yaw -= mouseMovement.x*sensitivity;
+	    myen.camera->Pitch -= mouseMovement.y*sensitivity;
+	}
     }
 
     std::cout << "Bye bye 👋" << std::endl;

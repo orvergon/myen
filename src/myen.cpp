@@ -97,6 +97,14 @@ void cursor_enter_callback(GLFWwindow* window, int entered)
 
 
 void Camera::updateCamera() {
+    glm::vec3 front;
+    front.x = cos(glm::radians(Yaw)) * cos(glm::radians(Pitch));
+    front.y = sin(glm::radians(Pitch));
+    front.z = sin(glm::radians(Yaw)) * cos(glm::radians(Pitch));
+    cameraDirection = glm::normalize(front);
+    // also re-calculate the Right and Up vector
+    cameraRight= glm::normalize(glm::cross(cameraDirection, worldUp));  
+    cameraUp = glm::normalize(glm::cross(cameraRight, cameraDirection));
     proj = glm::perspective(FOV, aspectRatio, nearPlane, farPlane);
     //view = glm::translate(glm::mat4(1.0f), -glm::vec3(cameraPos.x, cameraPos.y, cameraPos.z));
     view = glm::lookAt(glm::vec3(cameraPos), glm::vec3(cameraPos) + cameraDirection, cameraUp);

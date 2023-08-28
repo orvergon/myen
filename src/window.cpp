@@ -28,6 +28,8 @@ Window::Window()
 	glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     }
 
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
     glfwSetWindowUserPointer(window, this);
     glfwSetCursorPosCallback(window, Window::mouseCallback);
     glfwSetKeyCallback(window, Window::keyCallback);
