@@ -942,6 +942,7 @@ static void check_vk_result(VkResult err)
         abort();
 }
 
+//FIXME: Hardcoded frames in flight
 BufferId frameUniformBuffers[2];
 
 struct FrameUniform {
@@ -1063,7 +1064,7 @@ RenderBackend::RenderBackend(common::Window* window, common::Camera* camera) : w
 
     //Commands
     commands = new Commands(device, graphicsQueue, graphicsFamilyId.value(), 2);
-    commandBuffers = commands->allocateCommandBuffers(2); //TODO change to # of in flight frames
+    commandBuffers = commands->allocateCommandBuffers(2); //FIXME: change to # of in flight frames
 
     //Resource Manager
     resourceManager = new ResourceManager(device, physicalDevice, commands);
@@ -1080,7 +1081,7 @@ RenderBackend::RenderBackend(common::Window* window, common::Camera* camera) : w
     }
 
     auto presentModes = physicalDevice.getSurfacePresentModesKHR(surface);
-    vk::PresentModeKHR presentMode = vk::PresentModeKHR::eMailbox; //Hard coded, could backfire
+    vk::PresentModeKHR presentMode = vk::PresentModeKHR::eMailbox; //HACK: Hard coded, could backfire
 
     auto surfaceCapabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface); //Useful for getting max and min extent + minImagecount
     surfaceSize = window->getSurfaceSize();
@@ -1484,9 +1485,9 @@ void RenderBackend::addUICommands(std::string windowName, std::function<void(voi
 void RenderBackend::drawFrame()
 {
     //############# <frame render boilerplate> ###############
-    short frame = this->mFrame%2; //TODO hardcoded frame in flights could be messy
+    short frame = this->mFrame%2; //FIXME: hardcoded frame in flights
     this->mFrame++;
-    auto waitValue = device.waitForFences(inFlightFences[frame], false, UINT64_MAX); //Should I check this?
+    auto waitValue = device.waitForFences(inFlightFences[frame], false, UINT64_MAX); //XXX: Should I check this?
     device.resetFences(std::vector<vk::Fence>{inFlightFences[frame]});
 
     auto imageIndex = device.acquireNextImageKHR(swapchain, UINT64_MAX, imageAvailableSemaphores[frame]).value;
@@ -1526,10 +1527,6 @@ void RenderBackend::drawFrame()
 
 
 
-    //Render
-    //camera->proj = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-    //camera->view = glm::translate(glm::mat4(1.0f), glm::vec3(-camera->cameraPos));
-
     FrameUniform frameUniform{
         .cameraPosition = camera->cameraPos,
         .cameraProjection = camera->proj,
@@ -1551,7 +1548,7 @@ void RenderBackend::drawFrame()
                     .buffer = resourceManager->getBuffer(frameUniformBuffers[frame]),
                     .offset = 0,
                     .range = sizeof(frameUniform), 
-                    //TODO: could this be something like getBufferRange?
+                    //XXX: could this be something like getBufferRange?
                     //or maybe typed buffers
                 },
             },
@@ -1605,9 +1602,6 @@ void RenderBackend::drawFrame()
     ImGui::DragFloat("Cam.y", &camera->cameraPos.y, 0.005f);
     ImGui::DragFloat("Cam.z", &camera->cameraPos.z, 0.005f);
 
-    //ImGui::DragFloat("Obj.x", &models[modelId_hardcoded].position.x, 0.005f);
-    //ImGui::DragFloat("Obj.y", &models[modelId_hardcoded].position.y, 0.005f);
-    //ImGui::DragFloat("Obj.z", &models[modelId_hardcoded].position.z, 0.005f);
     ImGui::End();
 
     for(int i = 0; i < functions.size(); i++){
@@ -1634,7 +1628,7 @@ void RenderBackend::drawFrame()
         .pSwapchains = &swapchain,
         .pImageIndices = &imageIndex,
     };
-    //Don't know what to do with this result tho.
+    //XXX: Don't know what to do with this result.
     auto result = presentQueue.presentKHR(presentInfo);
 }
 
