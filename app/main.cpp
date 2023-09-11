@@ -10,6 +10,7 @@
 using my_clock = std::chrono::steady_clock;
 auto next_frame = my_clock::now();
 
+myen::Myen _myen{};
 
 void timeSync()
 {
@@ -17,50 +18,53 @@ void timeSync()
     std::this_thread::sleep_until(next_frame);
 }
 
+void cameraMovement() {
+    //Keyboard movement
+    glm::vec3 cameraMovement = glm::vec3(0.0f);
+    if(_myen.keyPressed("w"))
+    {
+	cameraMovement += glm::vec3(0.0f, 0.0f, -1.0f);
+    }
+    if(_myen.keyPressed("s"))
+    {
+	cameraMovement += glm::vec3(0.0f, 0.0f, 1.0f);
+    }
+    if(_myen.keyPressed("a"))
+    {
+	cameraMovement += glm::vec3(1.0f, 0.0f, 0.0f);
+    }
+    if(_myen.keyPressed("d"))
+    {
+	cameraMovement += glm::vec3(-1.0f, 0.0f, 0.0f);
+    }
+    if(cameraMovement != glm::vec3(0.0f))
+    {
+	cameraMovement = glm::normalize(cameraMovement);
+	cameraMovement *= 0.2f;
+	_myen.camera->cameraPos.x += cameraMovement.x;
+	_myen.camera->cameraPos.y += cameraMovement.y;
+	_myen.camera->cameraPos.z += cameraMovement.z;
+    }
+
+    //Mouse movement
+    float sensitivity = 0.1;
+    auto mouseMovement = _myen.getMouseMovement();
+    if(mouseMovement.x != 0 or mouseMovement.y != 0)
+    {
+	_myen.camera->Yaw -= mouseMovement.x*sensitivity;
+	_myen.camera->Pitch -= mouseMovement.y*sensitivity;
+    }
+}
 
 int main()
 {
-    myen::Myen myen{};
-    auto model = myen.importGlftFile("/home/orvergon/myen/assets/obj/monke/monke.glb");
-    auto entityId = myen.createEntity(model, glm::vec3(1.0f));
-    auto entity = myen.getEntity(entityId);
+    auto model = _myen.importGlftFile("/home/orvergon/myen/assets/obj/monke/monke.glb");
+    auto entityId = _myen.createEntity(model, glm::vec3(1.0f));
+    auto entity = _myen.getEntity(entityId);
 
-    while(myen.nextFrame())
+    while(_myen.nextFrame())
     {
-	//Camera movement
-	glm::vec3 cameraMovement = glm::vec3(0.0f);
-	if(myen.keyPressed("w"))
-	{
-	    cameraMovement += glm::vec3(0.0f, 0.0f, -1.0f);
-	}
-	if(myen.keyPressed("s"))
-	{
-	    cameraMovement += glm::vec3(0.0f, 0.0f, 1.0f);
-	}
-	if(myen.keyPressed("a"))
-	{
-	    cameraMovement += glm::vec3(1.0f, 0.0f, 0.0f);
-	}
-	if(myen.keyPressed("d"))
-	{
-	    cameraMovement += glm::vec3(-1.0f, 0.0f, 0.0f);
-	}
-	if(cameraMovement != glm::vec3(0.0f))
-	{
-	    cameraMovement = glm::normalize(cameraMovement);
-	    cameraMovement *= 0.2f;
-	    myen.camera->cameraPos.x += cameraMovement.x;
-	    myen.camera->cameraPos.y += cameraMovement.y;
-	    myen.camera->cameraPos.z += cameraMovement.z;
-	}
-
-	float sensitivity = 0.1;
-	auto mouseMovement = myen.getMouseMovement();
-	if(mouseMovement.x != 0 or mouseMovement.y != 0)
-	{
-	    myen.camera->Yaw -= mouseMovement.x*sensitivity;
-	    myen.camera->Pitch -= mouseMovement.y*sensitivity;
-	}
+	cameraMovement();
     }
 
     std::cout << "Bye bye 👋" << std::endl;
