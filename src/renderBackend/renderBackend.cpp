@@ -1419,6 +1419,12 @@ ModelId RenderBackend::addModel(MeshId mesh, glm::vec3 position,
             vk::VertexInputAttributeDescription{
                 .location = 1,
                 .binding = 0,
+                .format = vk::Format::eR32G32B32Sfloat,
+                .offset = offsetof(common::Vertex, normal),
+            },
+            vk::VertexInputAttributeDescription{
+                .location = 2,
+                .binding = 0,
                 .format = vk::Format::eR32G32Sfloat,
                 .offset = offsetof(common::Vertex, texCoord),
             }

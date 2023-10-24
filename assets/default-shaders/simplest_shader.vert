@@ -17,14 +17,17 @@ layout(set = 0, binding = 1) uniform ObjectUniform{
 }objUniform;
 
 layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec2 texPosition;
+layout(location = 1) in vec3 inNormal;
+layout(location = 2) in vec2 inTexCoord;
 
-layout(location = 0) out vec3 fragColor;
-layout(location = 1) out vec2 texCoord;
+layout(location = 0) out vec3 outFragColor;
+layout(location = 1) out vec2 outTexCoord;
+layout(location = 2) out vec3 outNormal;
 
 void main() {
     gl_Position = frameUniform.proj * frameUniform.view * objUniform.model * vec4(inPosition, 1.0);
 
-    fragColor = frameUniform.cameraPos.xyz;
-    texCoord = texPosition;
+    outFragColor = frameUniform.cameraPos.xyz;
+    outTexCoord = inTexCoord;
+    outNormal = inNormal;
 }

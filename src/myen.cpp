@@ -201,12 +201,14 @@ ModelId Myen::importGlftFile(std::string gltf_path) {
         auto& primitive = mesh.primitives[0]; //There can me more primitives
 
         auto positions = get_attribute_vec3("POSITION", primitive, model);
+        auto normals = get_attribute_vec3("NORMAL", primitive, model);
         auto texture_coordinate = get_attribute_vec2("TEXCOORD_0", primitive, model);
 
         m.vertices = std::vector<common::Vertex>();
         for(int i = 0; i < positions.size(); i++){
             m.vertices.push_back(common::Vertex{
                     .pos = positions[i],
+		    .normal = normals[i],
                     .texCoord = texture_coordinate[i]
                 });
         }
