@@ -21,6 +21,10 @@ void timeSync()
 void cameraMovement() {
     //Keyboard movement
     glm::vec3 cameraMovement = glm::vec3(0.0f);
+    if(_myen.keyPressed(";"))
+    {
+	_myen.toggleMouseCursor();
+    }
     if(_myen.keyPressed("w"))
     {
 	cameraMovement += glm::vec3(0.0f, 0.0f, -1.0f);

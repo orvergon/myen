@@ -21,11 +21,17 @@ struct KeyEvent {
     KeyStatus keyStatus;
 };
 
+enum MouseStatus {
+    eActive,
+    eInactive,
+};
+
 struct Window : common::Window
 {
 public:
     GLFWwindow* window;
     bool* keys;
+    MouseStatus mouseStatus = MouseStatus::eActive;
 
     Window();
     ~Window();
@@ -34,6 +40,7 @@ public:
     vk::SurfaceKHR createSurface(vk::Instance instance);
     std::vector<const char*> getRequiredVulkanExtensions();
     vk::Extent2D getSurfaceSize();
+    void toggleMouse();
     std::array<float, 2> getMouseOffset();
     glm::vec2 getMousePosition();
     std::vector<KeyEvent> getKeyEvents();

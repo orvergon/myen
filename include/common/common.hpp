@@ -36,6 +36,7 @@ public:
     virtual std::vector<const char*> getRequiredVulkanExtensions() = 0;
     virtual vk::SurfaceKHR createSurface(vk::Instance instance) = 0;
     virtual vk::Extent2D getSurfaceSize() = 0;
+    virtual void toggleMouse() = 0;
 
     void* windowPointer;
 };

@@ -64,6 +64,7 @@ public:
     void addUICommands(std::string windowName, std::function<void(void)> function);
     glm::vec2 getMousePos();
     glm::vec2 getMouseMovement();
+    void toggleMouseCursor();
 
     Camera* camera;
 

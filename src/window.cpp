@@ -79,6 +79,20 @@ vk::Extent2D Window::getSurfaceSize()
     return vk::Extent2D(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 }
 
+void Window::toggleMouse()
+{
+    switch (mouseStatus) {
+    case MouseStatus::eActive:
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	mouseStatus = MouseStatus::eInactive;
+	break;
+    case MouseStatus::eInactive:
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	mouseStatus = MouseStatus::eActive;
+	break;
+    }
+}
+
 std::array<float, 2> Window::getMouseOffset()
 {
     auto aux = mouseOffset;

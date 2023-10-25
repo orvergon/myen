@@ -154,6 +154,12 @@ glm::vec2 Myen::getMouseMovement()
 }
 
 
+void Myen::toggleMouseCursor()
+{
+    window->toggleMouse();
+}
+
+
 bool Myen::nextFrame() {
     if(window->shouldClose()) {
         return false;
