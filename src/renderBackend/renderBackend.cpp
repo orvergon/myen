@@ -5,10 +5,12 @@
 
 #include "renderBackend/renderBackend.hpp"
 
+#include <algorithm>
 #include <array>
 #include <bits/types/cookie_io_functions_t.h>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <fstream>
 #include <glm/fwd.hpp>
 #include <string>
@@ -945,10 +947,18 @@ static void check_vk_result(VkResult err)
 //FIXME: Hardcoded frames in flight
 BufferId frameUniformBuffers[2];
 
+struct LightUniform {
+    glm::vec4 lightPosition;
+    glm::vec4 lightColor;
+};
+
 struct FrameUniform {
     glm::vec4 cameraPosition;
     glm::mat4 cameraProjection;
     glm::mat4 cameraView;
+    glm::vec4 globalLightPosition;
+    LightUniform lights[10];
+    uint lightsCount;
 };
 
 struct ObjectUniform {
@@ -1338,6 +1348,18 @@ MeshId RenderBackend::addMesh(common::Mesh *common_mesh)
     return id++;
 }
 
+LightId RenderBackend::addLight(glm::vec3 position, glm::vec3 color)
+{
+    printf("Light(%f, %f, %f)\n", position.x, position.y, position.z);
+    static LightId id = 0;
+    Light light{
+        .lightPosition = glm::vec4(position, 1.0f),
+        .lightColor = glm::vec4(color, 1.0f),
+    };
+    lights[id] = light;
+    return id++;
+}
+
 
 ModelId RenderBackend::addModel(MeshId mesh, glm::vec3 position,
                                 glm::vec3 rotation, common::Texture *texture)
@@ -1532,12 +1554,26 @@ void RenderBackend::drawFrame()
     //############# </frame render boilerplate> ###############
 
 
-
+    //Gambiarra do krl
+    std::vector<LightUniform> lightUniform;
+    int countLights = 0;
+    for (auto& light : lights){
+	lightUniform.push_back(LightUniform{
+		.lightPosition = light.second.lightPosition,
+		.lightColor = light.second.lightColor,
+	    });
+	countLights++;
+	if(countLights > 10)
+	    break;
+    }
     FrameUniform frameUniform{
         .cameraPosition = camera->cameraPos,
         .cameraProjection = camera->proj,
         .cameraView = camera->view,
+	.globalLightPosition = glm::vec4(1.0f, 1.0f, 1.0f, 0.0f),
+	.lightsCount = static_cast<uint>(lightUniform.size()),
     };
+    std::copy(lightUniform.begin(), lightUniform.end(), frameUniform.lights);
     resourceManager->insertDataBuffer(frameUniformBuffers[frame], sizeof(FrameUniform), &frameUniform);
 
 
@@ -1600,10 +1636,28 @@ void RenderBackend::drawFrame()
 
     ImGui::ShowDemoWindow();
 
+    ImGui::Begin("Debug");
+    ImGui::Text("Number of lights: %lu", lights.size());
+    for(auto& light : lights){
+        ImGui::Text("Light Position: (%f, %f, %f)\n",
+                    light.second.lightPosition.x,
+                    light.second.lightPosition.y,
+                    light.second.lightPosition.z);
+    }
+    ImGui::End();
+
     static float x = 0;
     static float y = 0;
     static float z = 0;
     ImGui::Begin("Janela");
+    ImGui::Text("%f, %f, %f",
+                frameUniform.lights[0].lightColor.x,
+                frameUniform.lights[0].lightColor.y,
+                frameUniform.lights[0].lightColor.z);
+    ImGui::Text("%f, %f, %f",
+                lights[0].lightColor.x,
+                lights[0].lightColor.y,
+                lights[0].lightColor.z);
     ImGui::DragFloat("Cam.x", &camera->cameraPos.x, 0.005f);
     ImGui::DragFloat("Cam.y", &camera->cameraPos.y, 0.005f);
     ImGui::DragFloat("Cam.z", &camera->cameraPos.z, 0.005f);

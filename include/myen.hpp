@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <glm/fwd.hpp>
 #include <glm/trigonometric.hpp>
+#include <optional>
 #include <string>
 #include <unordered_map>
 namespace myen {
@@ -27,10 +28,13 @@ struct Model {
 
 // Entity e o "model" do render backend deveriam ser bem atrelados
 struct Entity {
+    enum Type{Graphical, Light};
+
     EntityId id;
+    Type type;
     glm::vec3 pos;
     glm::vec3 rotation;
-    RenderBackend::ModelId modelId; //Isso não deveria ser publico
+    std::optional<RenderBackend::ModelId> modelId; //Isso não deveria ser publico
     //precisa ter um modelId? porque eu não crio um ID de entidade e uso ele
     //como id do model no render?
 };
@@ -59,6 +63,7 @@ public:
     bool nextFrame();
     ModelId importGlftFile(std::string gltf_path);
     EntityId createEntity(ModelId model, glm::vec3 pos = glm::vec3(0.0f));
+    EntityId createLight(glm::vec3 pos = glm::vec3(0.0f), glm::vec3 color = glm::vec3(1.0f));
     Entity* getEntity(EntityId id);
     bool keyPressed(std::string key);
     void addUICommands(std::string windowName, std::function<void(void)> function);

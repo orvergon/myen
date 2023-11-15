@@ -184,7 +184,8 @@ bool Myen::nextFrame() {
     }
 
     for(auto& [entityId, entity]: entities){
-        renderBackend->updateModelPosition(entity.modelId, entity.pos, entity.rotation);
+	if(entity.type == Entity::Type::Graphical)
+	    renderBackend->updateModelPosition(entity.modelId.value(), entity.pos, entity.rotation);
     }
     
     camera->updateCamera();
@@ -269,18 +270,28 @@ ModelId Myen::importGlftFile(std::string gltf_path) {
     return id++;
 }
 
+EntityId nextEntityId = 0;
 
 EntityId Myen::createEntity(ModelId modelId, glm::vec3 pos) {
     auto model = models[modelId];
     auto entityId = renderBackend->addModel(model.meshId, pos, glm::vec3(0.0f), &model.texture);
-    static EntityId id = 0;
-    entities[id] = Entity{
-	.id = id,
+    entities[nextEntityId] = Entity{
+	.id = nextEntityId,
+	.type = Entity::Type::Graphical,
 	.modelId = entityId,
     };
-    return id++;
+    return nextEntityId++;
 }
 
+EntityId Myen::createLight(glm::vec3 pos, glm::vec3 color)
+{
+    entities[nextEntityId] = Entity{
+	.id = nextEntityId,
+	.type = Entity::Type::Light,
+    };
+    renderBackend->addLight(pos, color);
+    return nextEntityId++;
+}
 
 Entity* Myen::getEntity(EntityId id) {
     return &entities[id];

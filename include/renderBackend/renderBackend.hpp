@@ -187,6 +187,11 @@ struct Texture {
     vk::Sampler sampler;
 };
 
+typedef uint64_t LightId;
+struct Light{
+    glm::vec4 lightPosition;
+    glm::vec4 lightColor;
+};
 
 typedef uint64_t MeshId;
 struct Mesh {
@@ -222,6 +227,7 @@ public:
 
     void drawFrame();
     MeshId addMesh(common::Mesh* mesh);
+    LightId addLight(glm::vec3 position, glm::vec3 color);
     ModelId addModel(MeshId mesh,
                  glm::vec3 position,
                  glm::vec3 rotation,
@@ -248,6 +254,7 @@ private:
     std::vector<BufferId> commandBuffers;
     std::unordered_map<MeshId, Mesh> meshes;
     std::unordered_map<ModelId, Model> models;
+    std::unordered_map<LightId, Light> lights;
     vk::Queue graphicsQueue;
     vk::Queue presentQueue;
     vk::RenderPass renderPass;

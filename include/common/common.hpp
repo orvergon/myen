@@ -17,6 +17,10 @@ struct Mesh{
     std::vector<Vertex> vertices;
 };
 
+struct Model {
+    
+};
+
 struct Texture{
     unsigned char* data;
     int data_size;

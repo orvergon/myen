@@ -44,7 +44,7 @@ void cameraMovement() {
     if(cameraMovement != glm::vec3(0.0f))
     {
 	cameraMovement = glm::normalize(cameraMovement);
-	cameraMovement *= 0.2f;
+	cameraMovement *= 0.05f;
 	_myen.camera->cameraPos.x += cameraMovement.x;
 	_myen.camera->cameraPos.y += cameraMovement.y;
 	_myen.camera->cameraPos.z += cameraMovement.z;
@@ -65,6 +65,8 @@ int main()
     auto model = _myen.importGlftFile("/home/orvergon/myen/assets/obj/monke/monke.glb");
     auto entityId = _myen.createEntity(model, glm::vec3(1.0f));
     auto entity = _myen.getEntity(entityId);
+    auto light = _myen.createLight(glm::vec3(2.0, 0.0, 3.0));
+    auto light2 = _myen.createLight(glm::vec3(0.0, 3.0, 0.0));
 
     while(_myen.nextFrame())
     {
