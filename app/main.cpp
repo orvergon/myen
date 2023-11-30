@@ -10,15 +10,13 @@
 using my_clock = std::chrono::steady_clock;
 auto next_frame = my_clock::now();
 
-myen::Myen _myen{};
-
 void timeSync()
 {
     next_frame += std::chrono::milliseconds(1000 / 60); // 5Hz
     std::this_thread::sleep_until(next_frame);
 }
 
-void cameraMovement() {
+void cameraMovement(myen::Myen _myen) {
     //Keyboard movement
     glm::vec3 cameraMovement = glm::vec3(0.0f);
     if(_myen.keyPressed(";"))
@@ -62,6 +60,7 @@ void cameraMovement() {
 
 int main()
 {
+    myen::Myen _myen{};
     auto model = _myen.importGlftFile("/home/orvergon/myen/assets/obj/monke/monke.glb");
     auto entityId = _myen.createEntity(model, glm::vec3(1.0f));
     auto entity = _myen.getEntity(entityId);
@@ -70,7 +69,7 @@ int main()
 
     while(_myen.nextFrame())
     {
-	cameraMovement();
+	cameraMovement(_myen);
     }
 
     std::cout << "Bye bye 👋" << std::endl;
