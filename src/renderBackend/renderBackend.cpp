@@ -75,22 +75,33 @@ void checkPhysicalDeviceExtensionSupport(vk::PhysicalDevice physicalDevice, std:
     std::set<std::string> requiredExtensions(extensions.begin(), extensions.end());    
 
     for (const auto& extension : availableExtensions) {
-        requiredExtensions.erase(extension.extensionName);
+	//XXX: gambiarra porque agora o driver retorna: "ext_name00000000" (onde 0 é o null terminator)
+	//Se não excluir ele não consegue dar match no set
+	std::string a(extension.extensionName);
+        requiredExtensions.erase(a.substr(0, a.find((char)0)));
     }
 
     if (requiredExtensions.empty()){
         return;
     }
 
+    std::cout << "No device found... killing myself rn" << std::endl;
     exit(0);
 }
 
 vk::PhysicalDevice selectPhysicalDevice(vk::Instance instance, std::vector<const char*> &extensions)
 {
     std::set<std::string> requiredExtensions(extensions.begin(), extensions.end());    
+    for(auto& extension : requiredExtensions){
+	std::cout << extension << " " << extension.size() << "\n";
+    }
+
     auto availableInstanceExt = vk::enumerateInstanceExtensionProperties();
     for (const auto& extension : availableInstanceExt) {
-        requiredExtensions.erase(extension.extensionName);
+	//XXX: gambiarra porque agora o driver retorna: "ext_name00000000" (onde 0 é o null terminator)
+	//Se não excluir ele não consegue dar match no set
+	std::string a(extension.extensionName);
+	requiredExtensions.erase(a.substr(0, a.find((char)0)));
     }
 
     for (auto& device : instance.enumeratePhysicalDevices())
@@ -105,6 +116,7 @@ vk::PhysicalDevice selectPhysicalDevice(vk::Instance instance, std::vector<const
             return device;
         }
     } 
+    std::cout << "No device found... killing myself rn";
     exit(0);
 }
 
