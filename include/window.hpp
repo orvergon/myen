@@ -33,7 +33,7 @@ public:
     bool* keys;
     MouseStatus mouseStatus = MouseStatus::eActive;
 
-    Window();
+    Window(int width=1600, int height=900);
     ~Window();
 
     bool shouldClose();

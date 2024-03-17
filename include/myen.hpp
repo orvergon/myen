@@ -54,10 +54,15 @@ struct Camera : common::Camera{
     void updateCamera();
 };
 
+struct MyenConfig {
+    int witdh = 1920;
+    int height = 1080;
+};
+
 class Myen
 {
 public:
-    Myen();
+    Myen(MyenConfig config);
     ~Myen();
 
     bool nextFrame();

@@ -111,9 +111,9 @@ void Camera::updateCamera() {
 }
 
 
-Myen::Myen()
+Myen::Myen(MyenConfig config)
 {
-    window = new Window();
+    window = new Window(config.witdh, config.height);
     glfwSetCursorEnterCallback(window->window, cursor_enter_callback);
     cursor_pos = window->getMousePosition();
     old_cursor_pos = cursor_pos;
