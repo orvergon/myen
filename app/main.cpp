@@ -17,8 +17,9 @@ void timeSync()
 }
 
 void cameraMovement(myen::Myen &_myen) {
-    //Keyboard movement
     glm::vec3 cameraMovement = glm::vec3(0.0f);
+    glm::vec3 camera2DFront = glm::vec3(_myen.camera->cameraDirection.x, 0.0f, _myen.camera->cameraDirection.z);
+    glm::vec3 camera2DRight = glm::vec3(_myen.camera->cameraRight.x, 0.0f, _myen.camera->cameraRight.z);
     static auto time = my_clock::now();
     if(_myen.keyPressed(";"))
     {
@@ -32,19 +33,27 @@ void cameraMovement(myen::Myen &_myen) {
     }
     if(_myen.keyPressed("w"))
     {
-	cameraMovement += glm::vec3(0.0f, 0.0f, -1.0f);
+	cameraMovement += camera2DFront;
     }
     if(_myen.keyPressed("s"))
     {
-	cameraMovement += glm::vec3(0.0f, 0.0f, 1.0f);
+	cameraMovement -= camera2DFront;
     }
     if(_myen.keyPressed("a"))
     {
-	cameraMovement += glm::vec3(1.0f, 0.0f, 0.0f);
+	cameraMovement -= camera2DRight;
     }
     if(_myen.keyPressed("d"))
     {
-	cameraMovement += glm::vec3(-1.0f, 0.0f, 0.0f);
+	cameraMovement += camera2DRight;
+    }
+    if(_myen.keyPressed("q"))
+    {
+	cameraMovement -= glm::vec3(0.0f, 1.0f, 0.0f);
+    }
+    if(_myen.keyPressed("e"))
+    {
+	cameraMovement += glm::vec3(0.0f, 1.0f, 0.0f);
     }
     if(cameraMovement != glm::vec3(0.0f))
     {
