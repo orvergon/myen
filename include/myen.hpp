@@ -24,6 +24,7 @@ struct Model {
     RenderBackend::MeshId meshId;
     common::Mesh mesh;
     common::Texture texture;
+    RenderBackend::ImageId textureId;
 };
 
 // Entity e o "model" do render backend deveriam ser bem atrelados

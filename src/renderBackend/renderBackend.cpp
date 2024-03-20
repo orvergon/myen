@@ -1322,13 +1322,56 @@ RenderBackend::RenderBackend(common::Window* window, common::Camera* camera) : w
         .width = x,
         .channels = channels,
     };
-    auto modelId_hardcoded = addModel(meshId, glm::vec3(0.0f), glm::vec3(0.0f), &texture);
+    //auto modelId_hardcoded = addModel(meshId, glm::vec3(0.0f), glm::vec3(0.0f), &texture);
 }
 
 
 RenderBackend::~RenderBackend()
 {
     instance.destroy();
+}
+
+
+ImageId RenderBackend::addTexture(common::Texture* texture)
+{
+    std::cout << "\ttexture: " << std::endl;
+    std::cout << "\t\t: " << std::endl;
+    auto textureStageBuffer = resourceManager->createBuffer(BufferType::eStageBuffer, texture->data_size);
+    resourceManager->insertDataBuffer(textureStageBuffer, texture->data_size, texture->data);
+
+    auto extent = vk::Extent2D{
+        .width = static_cast<uint32_t>(texture->width),
+        .height = static_cast<uint32_t>(texture->height)
+    };
+    auto image = resourceManager->createImage(extent, ImageType::eTexture);
+    resourceManager->copyBufferToImage(textureStageBuffer, image, extent);
+    vk::SamplerCreateInfo samplerInfo{
+        .magFilter = vk::Filter::eLinear,
+        .minFilter = vk::Filter::eLinear,
+        .mipmapMode = vk::SamplerMipmapMode::eLinear,
+        .addressModeU = vk::SamplerAddressMode::eRepeat,
+        .addressModeV = vk::SamplerAddressMode::eRepeat,
+        .addressModeW = vk::SamplerAddressMode::eRepeat,
+        .mipLodBias = 0.0f,
+        .anisotropyEnable = true,
+        .maxAnisotropy = 4,
+        .compareEnable = false,
+        .compareOp = vk::CompareOp::eAlways,
+        .minLod = 0.0f,
+        .maxLod = 0.0f,
+        .borderColor = vk::BorderColor::eIntOpaqueBlack,
+        .unnormalizedCoordinates = false,
+    };
+    auto sampler = device.createSampler(samplerInfo);
+    auto imageView = resourceManager->getImageView(image);
+    static ImageId imageId = 0;
+    this->textures[imageId] = Texture{
+            .image = image,
+            .imageView = imageView,
+            .sampler = sampler
+    };
+
+    return imageId;
 }
 
 
@@ -1374,41 +1417,11 @@ LightId RenderBackend::addLight(glm::vec3 position, glm::vec3 color)
 
 
 ModelId RenderBackend::addModel(MeshId mesh, glm::vec3 position,
-                                glm::vec3 rotation, common::Texture *texture)
+                                glm::vec3 rotation, ImageId texture)
 {
     std::cout << "New model, MeshId: " << mesh << std::endl;
-    //Texture Stuff
-    std::cout << "\ttexture: " << std::endl;
-    std::cout << "\t\t: " << std::endl;
-    auto textureStageBuffer = resourceManager->createBuffer(BufferType::eStageBuffer, texture->data_size);
-    resourceManager->insertDataBuffer(textureStageBuffer, texture->data_size, texture->data);
 
-    auto extent = vk::Extent2D{
-        .width = static_cast<uint32_t>(texture->width),
-        .height = static_cast<uint32_t>(texture->height)
-    };
-    auto image = resourceManager->createImage(extent, ImageType::eTexture);
-    resourceManager->copyBufferToImage(textureStageBuffer, image, extent);
-    vk::SamplerCreateInfo samplerInfo{
-        .magFilter = vk::Filter::eLinear,
-        .minFilter = vk::Filter::eLinear,
-        .mipmapMode = vk::SamplerMipmapMode::eLinear,
-        .addressModeU = vk::SamplerAddressMode::eRepeat,
-        .addressModeV = vk::SamplerAddressMode::eRepeat,
-        .addressModeW = vk::SamplerAddressMode::eRepeat,
-        .mipLodBias = 0.0f,
-        .anisotropyEnable = true,
-        .maxAnisotropy = 4,
-        .compareEnable = false,
-        .compareOp = vk::CompareOp::eAlways,
-        .minLod = 0.0f,
-        .maxLod = 0.0f,
-        .borderColor = vk::BorderColor::eIntOpaqueBlack,
-        .unnormalizedCoordinates = false,
-    };
-    auto sampler = device.createSampler(samplerInfo);
-    auto imageView = resourceManager->getImageView(image);
-
+    auto _texture = this->textures[texture];
     //Pipeline Stuff
     auto layout = descriptorManager->CreateLayout({
         vk::DescriptorSetLayoutBinding {
@@ -1428,7 +1441,7 @@ ModelId RenderBackend::addModel(MeshId mesh, glm::vec3 position,
             .descriptorType = vk::DescriptorType::eCombinedImageSampler,
             .descriptorCount = 1,
             .stageFlags = vk::ShaderStageFlagBits::eAll,
-            .pImmutableSamplers = &sampler,
+            .pImmutableSamplers = &_texture.sampler,
         }
     });
     descriptorManager->preAllocateDescriptorSets(layout, 2);
@@ -1488,11 +1501,7 @@ ModelId RenderBackend::addModel(MeshId mesh, glm::vec3 position,
         .meshId = mesh,
         .position = position,
         .rotation = rotation,
-        .texture = new Texture{
-            .image = image,
-            .imageView = imageView,
-            .sampler = sampler
-        },
+	.textureId = texture,
         .pipeline = pipelineid,
         .descriptors = {
             descriptors[0],
@@ -1504,6 +1513,7 @@ ModelId RenderBackend::addModel(MeshId mesh, glm::vec3 position,
         },
     };
     models[id] = model;
+    std::cout << id << std::endl;
     return id++;
 }
 
@@ -1615,8 +1625,8 @@ void RenderBackend::drawFrame()
             },
             WriteDescriptorInfo{
                 .imageInfo = vk::DescriptorImageInfo{
-                    .sampler = models[modelId].texture->sampler,
-                    .imageView = models[modelId].texture->imageView,
+                    .sampler = textures[models[modelId].textureId].sampler,
+                    .imageView = textures[models[modelId].textureId].imageView,
                     .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
                 }
             },

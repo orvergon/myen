@@ -259,13 +259,15 @@ ModelId Myen::importGlftFile(std::string gltf_path) {
     }
 
     auto meshId = renderBackend->addMesh(&m);
+    auto textureId = renderBackend->addTexture(&t);
     //auto modelId = renderBackend->addModel(meshId, glm::vec3(1.0f), glm::vec3(0.0f), &t);
     static ModelId id = 0;
     models[id] = Model{
 	.id = id,
 	.meshId = meshId,
 	.mesh = m,
-	.texture = t
+	.texture = t,
+	.textureId = textureId,
     };
     return id++;
 }
@@ -274,10 +276,11 @@ EntityId nextEntityId = 0;
 
 EntityId Myen::createEntity(ModelId modelId, glm::vec3 pos) {
     auto model = models[modelId];
-    auto entityId = renderBackend->addModel(model.meshId, pos, glm::vec3(0.0f), &model.texture);
+    auto entityId = renderBackend->addModel(model.meshId, pos, glm::vec3(0.0f), model.textureId);
     entities[nextEntityId] = Entity{
 	.id = nextEntityId,
 	.type = Entity::Type::Graphical,
+        .pos = pos,
 	.modelId = entityId,
     };
     return nextEntityId++;

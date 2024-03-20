@@ -210,7 +210,7 @@ struct Model {
     glm::vec3 rotation;
 
    
-    Texture* texture;
+    ImageId textureId;
 
     PipelineID pipeline;
     
@@ -227,11 +227,12 @@ public:
 
     void drawFrame();
     MeshId addMesh(common::Mesh* mesh);
+    ImageId addTexture(common::Texture* texture);
     LightId addLight(glm::vec3 position, glm::vec3 color);
     ModelId addModel(MeshId mesh,
                  glm::vec3 position,
                  glm::vec3 rotation,
-                 common::Texture* texture);
+                 ImageId texture);
     void updateModelPosition(ModelId model, glm::vec3 position, glm::vec3 rotation);
     void addUICommands(std::string windowName, std::function<void(void)> function);
     
@@ -253,6 +254,7 @@ private:
     std::vector<vk::Semaphore> renderFinishedSemaphores;
     std::vector<BufferId> commandBuffers;
     std::unordered_map<MeshId, Mesh> meshes;
+    std::unordered_map<MeshId, Texture> textures;
     std::unordered_map<ModelId, Model> models;
     std::unordered_map<LightId, Light> lights;
     vk::Queue graphicsQueue;
