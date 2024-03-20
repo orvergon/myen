@@ -19,9 +19,16 @@ void timeSync()
 void cameraMovement(myen::Myen &_myen) {
     //Keyboard movement
     glm::vec3 cameraMovement = glm::vec3(0.0f);
+    static auto time = my_clock::now();
     if(_myen.keyPressed(";"))
     {
-	_myen.toggleMouseCursor();
+	auto new_time = my_clock::now();
+	auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(new_time - time).count();
+	if(ms >= 1000)
+	{
+	    _myen.toggleMouseCursor();
+	    time = new_time;
+	}
     }
     if(_myen.keyPressed("w"))
     {
