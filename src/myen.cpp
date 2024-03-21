@@ -20,8 +20,8 @@
 #include <sys/types.h>
 #include <thread>
 #include <vector>
+#include <thread>
 
-#include "glm/mat4x4.hpp"
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <vulkan/vulkan_enums.hpp>
@@ -111,6 +111,7 @@ void Camera::updateCamera() {
 }
 
 
+
 Myen::Myen(MyenConfig config)
 {
     window = new Window(config.witdh, config.height);
@@ -120,6 +121,7 @@ Myen::Myen(MyenConfig config)
     auto surface_size = window->getSurfaceSize();
     camera = new Camera();
     camera->aspectRatio = (float)surface_size.width / (float)surface_size.height;
+    framerate = config.framerate;
 
     renderBackend = new RenderBackend::RenderBackend(window, camera);
 
@@ -127,6 +129,12 @@ Myen::Myen(MyenConfig config)
     [&]{
 	ImGui::Text("(%f, %f)", cursor_movement.x, cursor_movement.y);
 	ImGui::Text("(%f, %f)", cursor_pos.x, cursor_pos.y);
+    });
+
+    renderBackend->addUICommands("timer info",
+    [&]{
+	ImGui::Text("Frame time: %ld ms", frameTime.count());
+	ImGui::Text("Delay time: %ld ms", (1000/framerate) - frameTime.count());
     });
 }
 
@@ -159,7 +167,6 @@ void Myen::toggleMouseCursor()
     window->toggleMouse();
 }
 
-
 bool Myen::nextFrame() {
     if(window->shouldClose()) {
         return false;
@@ -190,7 +197,11 @@ bool Myen::nextFrame() {
     
     camera->updateCamera();
     renderBackend->drawFrame();
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    endFrameTimePoint = std::chrono::steady_clock::now();
+    frameTime = std::chrono::duration_cast<std::chrono::milliseconds>(endFrameTimePoint - beginFrameTimePoint);
+    auto next_frame = std::chrono::milliseconds((1000/framerate) - frameTime.count());
+    std::this_thread::sleep_for(next_frame);
+    beginFrameTimePoint = std::chrono::steady_clock::now();
     return true;
 }
 

@@ -3,6 +3,7 @@
 #include "common.hpp"
 #include "renderBackend.hpp"
 #include "window.hpp"
+#include <chrono>
 #include <cstdint>
 #include <glm/fwd.hpp>
 #include <glm/trigonometric.hpp>
@@ -58,6 +59,7 @@ struct Camera : common::Camera{
 struct MyenConfig {
     int witdh = 1920;
     int height = 1080;
+    int framerate = 72;
 };
 
 class Myen
@@ -85,6 +87,11 @@ private:
     std::unordered_map<ModelId, Model> models; 
     std::unordered_map<EntityId, Entity> entities; 
     std::unordered_map<std::string, bool> keyPressedMap;
+
+    std::chrono::time_point<std::chrono::steady_clock> beginFrameTimePoint;
+    std::chrono::time_point<std::chrono::steady_clock> endFrameTimePoint;
+    std::chrono::milliseconds frameTime;
+    int framerate;
 };
 
 };
