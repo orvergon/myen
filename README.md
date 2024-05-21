@@ -1,6 +1,3 @@
 # Myen
-Toy renderer made for fun. 
+WIP 3D game engine. 
 Made with Vulkan and C++.
-
-`simple_texture` url: https://commons.wikimedia.org/wiki/File:Hue_alpha_falloff.png
-
