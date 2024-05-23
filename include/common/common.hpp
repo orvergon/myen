@@ -45,13 +45,23 @@ public:
     void* windowPointer;
 };
 
+// xxx: these enums are hacky but this isn't production code and I don't wanna waste
+// processing on a mapping
 enum FrontFace {
-    Clockwise,
-    CounterClockwise,
+    Clockwise = (int) vk::FrontFace::eClockwise,
+    CounterClockwise = (int) vk::FrontFace::eClockwise,
+};
+
+enum CullMode{
+    Back = (int) vk::CullModeFlagBits::eBack,
+    Front = (int) vk::CullModeFlagBits::eFront,
+    FrontAndBack = (int) vk::CullModeFlagBits::eFrontAndBack,
+    None = (int) vk::CullModeFlagBits::eNone,
 };
 
 struct PipelineCreateInfo {
-    FrontFace frontFace = FrontFace::Clockwise;
+    common::FrontFace frontFace = FrontFace::Clockwise;
+    common::CullMode cullMode = CullMode::Back;
     std::string vertexShaderPath = "/home/orvergon/myen/assets/default-shaders/vert";
     std::string fragmentShaderPath = "/home/orvergon/myen/assets/default-shaders/frag";
 };

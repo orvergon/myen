@@ -90,9 +90,9 @@ void checkPhysicalDeviceExtensionSupport(vk::PhysicalDevice physicalDevice, std:
 vk::PhysicalDevice selectPhysicalDevice(vk::Instance instance, std::vector<const char*> &extensions)
 {
     std::set<std::string> requiredExtensions(extensions.begin(), extensions.end());    
-    for(auto& extension : requiredExtensions){
-	std::cout << extension << " " << extension.size() << "\n";
-    }
+    //for(auto& extension : requiredExtensions){
+    //    std::cout << extension << " " << extension.size() << "\n";
+    //}
 
     auto availableInstanceExt = vk::enumerateInstanceExtensionProperties();
     for (const auto& extension : availableInstanceExt) {
@@ -758,8 +758,8 @@ PipelineID PipelineManager::CreatePipeline(PipelineInfo info)
         .depthClampEnable = false,
         .rasterizerDiscardEnable = false,
         .polygonMode = vk::PolygonMode::eFill,
-        .cullMode = vk::CullModeFlagBits::eNone,
-        .frontFace = vk::FrontFace::eClockwise,
+        .cullMode = (vk::CullModeFlagBits)info.pipelineCreateInfo.cullMode,
+        .frontFace = (vk::FrontFace)info.pipelineCreateInfo.frontFace,
         .depthBiasEnable = false,
         .depthBiasConstantFactor = 0.0f,
         .depthBiasClamp = 0.0f,
@@ -1332,8 +1332,6 @@ RenderBackend::~RenderBackend()
 
 ImageId RenderBackend::addTexture(common::Texture* texture)
 {
-    std::cout << "\ttexture: " << std::endl;
-    std::cout << "\t\t: " << std::endl;
     auto textureStageBuffer = resourceManager->createBuffer(BufferType::eStageBuffer, texture->data_size);
     resourceManager->insertDataBuffer(textureStageBuffer, texture->data_size, texture->data);
 
@@ -1375,9 +1373,6 @@ MeshId RenderBackend::addMesh(common::Mesh *common_mesh)
     };
 
     static MeshId id = 0;
-    std::cout << "MeshId: " << id << std::endl;
-    std::cout << "\tvertex number: " << common_mesh->vertices.size() << std::endl;
-    std::cout << "\tindex number: " << common_mesh->indices.size() << std::endl;
     meshes[id] = mesh;
     return id++;
 }
@@ -1440,6 +1435,7 @@ PipelineID RenderBackend::createPipeline(common::PipelineCreateInfo createInfo)
     });
 
     auto pipelineid = pipelineManager->CreatePipeline({
+        .pipelineCreateInfo = createInfo,
         .vertexShaderPath   = createInfo.vertexShaderPath,
         .fragmentShaderPath = createInfo.fragmentShaderPath,
         .vertexBinds = std::vector<vk::VertexInputBindingDescription>{
@@ -1492,8 +1488,6 @@ ModelId RenderBackend::addModel(MeshId mesh, glm::vec3 position,
                                 glm::vec3 rotation, ImageId texture,
 				PipelineID pipelineId)
 {
-    std::cout << "New model, MeshId: " << mesh << std::endl;
-
     auto _texture = this->textures[texture];
 
     auto dsLayout = pipelineManager->getPipeline(pipelineId).descriptorLayout;
@@ -1502,7 +1496,6 @@ ModelId RenderBackend::addModel(MeshId mesh, glm::vec3 position,
     descriptors[0] = descriptorManager->getFreeDS(dsLayout);
     descriptors[1] = descriptorManager->getFreeDS(dsLayout);
 
-    std::cout << "pipelineid: " << pipelineId<< std::endl;
     static ModelId id = 0;
     Model model{
         .id = id,
@@ -1521,7 +1514,6 @@ ModelId RenderBackend::addModel(MeshId mesh, glm::vec3 position,
         },
     };
     models[id] = model;
-    std::cout << id << std::endl;
     return id++;
 }
 
@@ -1645,7 +1637,6 @@ void RenderBackend::drawFrame()
         commandBuffer.bindVertexBuffers(0, buffers, offsets);
         commandBuffer.bindIndexBuffer(resourceManager->getBuffer(mesh.indexBufferId), vk::DeviceSize(0), vk::IndexType::eUint32);
 
-        std::cout << "Pipeline: " << models[modelId].pipeline << std::endl;
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipelineManager->getPipeline(models[modelId].pipeline).pipeline);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
                         pipelineManager->getPipeline(models[modelId].pipeline).pipelineLayout,

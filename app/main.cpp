@@ -2,6 +2,7 @@
 #include <chrono>
 #include <thread>
 #include <iostream>
+#include "common.hpp"
 #include "myen.hpp"
 
 
@@ -76,7 +77,7 @@ int main()
 {
     myen::Myen _myen{myen::MyenConfig{}};
     auto model = _myen.importGlftFile("/home/orvergon/myen/assets/obj/monke/monke.glb");
-    auto entityId = _myen.createEntity(model, glm::vec3(2.0f));
+    auto entityId = _myen.createEntity(model, glm::vec3(2.0f), {.frontFace = common::FrontFace::CounterClockwise, .cullMode = common::CullMode::Front});
     auto entity2Id = _myen.createEntity(model, glm::vec3(0.0f),
 					{
 					    .vertexShaderPath   = "/home/orvergon/myen/assets/white-shader/vert",
