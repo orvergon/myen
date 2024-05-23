@@ -45,5 +45,16 @@ public:
     void* windowPointer;
 };
 
+enum FrontFace {
+    Clockwise,
+    CounterClockwise,
+};
+
+struct PipelineCreateInfo {
+    FrontFace frontFace = FrontFace::Clockwise;
+    std::string vertexShaderPath = "/home/orvergon/myen/assets/default-shaders/vert";
+    std::string fragmentShaderPath = "/home/orvergon/myen/assets/default-shaders/frag";
+};
+
 }
 

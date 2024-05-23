@@ -1,9 +1,7 @@
 #include <glm/fwd.hpp>
 #include <chrono>
-#include <cstdint>
 #include <thread>
 #include <iostream>
-#include "imgui.h"
 #include "myen.hpp"
 
 
@@ -79,10 +77,13 @@ int main()
     myen::Myen _myen{myen::MyenConfig{}};
     auto model = _myen.importGlftFile("/home/orvergon/myen/assets/obj/monke/monke.glb");
     auto entityId = _myen.createEntity(model, glm::vec3(2.0f));
-    auto entity2Id = _myen.createEntity(model, glm::vec3(0.0f));
+    auto entity2Id = _myen.createEntity(model, glm::vec3(0.0f),
+					{
+					    .vertexShaderPath   = "/home/orvergon/myen/assets/white-shader/vert",
+					    .fragmentShaderPath = "/home/orvergon/myen/assets/white-shader/frag",
+					});
     auto entity1 = _myen.getEntity(entityId);
     auto entity2 = _myen.getEntity(entity2Id);
-    std::cout << entity1->pos.x << "|" << entity2->pos.y << std::endl;
     auto light = _myen.createLight(glm::vec3(2.0, 0.0, 3.0));
     auto light2 = _myen.createLight(glm::vec3(0.0, 3.0, 0.0));
 

@@ -59,7 +59,7 @@ struct Camera : common::Camera{
 struct MyenConfig {
     int witdh = 1920;
     int height = 1080;
-    int framerate = 72;
+    int framerate = 144;
 };
 
 class Myen
@@ -70,7 +70,7 @@ public:
 
     bool nextFrame();
     ModelId importGlftFile(std::string gltf_path);
-    EntityId createEntity(ModelId model, glm::vec3 pos = glm::vec3(0.0f));
+    EntityId createEntity(ModelId model, glm::vec3 pos = glm::vec3(0.0f), common::PipelineCreateInfo shaderInfo = {});
     EntityId createLight(glm::vec3 pos = glm::vec3(0.0f), glm::vec3 color = glm::vec3(1.0f));
     Entity* getEntity(EntityId id);
     bool keyPressed(std::string key);

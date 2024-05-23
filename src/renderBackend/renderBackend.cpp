@@ -13,8 +13,8 @@
 #include <cstdio>
 #include <fstream>
 #include <glm/fwd.hpp>
+#include <ostream>
 #include <string>
-#include <string_view>
 #include <sys/types.h>
 #include <unordered_map>
 #include <vector>
@@ -28,8 +28,6 @@
 #include <vulkan/vulkan_structs.hpp>
 
 #include "common.hpp"
-#include "glm/glm.hpp"
-#include "glm/mat4x4.hpp"
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -842,20 +840,19 @@ PipelineID PipelineManager::CreatePipeline(PipelineInfo info)
     if(pipeline.result != vk::Result::eSuccess)
         std::cout << "Error pipeline" << std::endl;;
 
-    pipelines[pipelineId] = pipeline.value;
-    layouts[pipelineId] = layout;
+    pipelines[pipelineId] = Pipeline{
+	.pipeline = pipeline.value,
+	.pipelineLayout = layout,
+	.sampler = info.sampler,
+        .descriptorLayout = info.layoutIds.value()[0],
+    };
 
     return pipelineId++;
 }
 
-vk::Pipeline PipelineManager::getPipeline(PipelineID id)
+Pipeline PipelineManager::getPipeline(PipelineID id)
 {
     return pipelines[id];
-}
-
-vk::PipelineLayout PipelineManager::getPipelineLayout(PipelineID id)
-{
-    return layouts[id];
 }
 
 std::vector<char> PipelineManager::readFile(const std::string &filename)
@@ -939,7 +936,6 @@ VkResult CreateDebugUtilsMessengerEXT(VkInstance instance,
 
 /*############################## Render Backend methods #############################*/
 // temps
-PipelineID pipelineid;
 BufferId uniformBufferId;
 DSId descriptors[2];
 
@@ -1323,6 +1319,8 @@ RenderBackend::RenderBackend(common::Window* window, common::Camera* camera) : w
         .channels = channels,
     };
     //auto modelId_hardcoded = addModel(meshId, glm::vec3(0.0f), glm::vec3(0.0f), &texture);
+    //createPipeline(common::PipelineCreateInfo{});
+    createSampler();
 }
 
 
@@ -1345,30 +1343,11 @@ ImageId RenderBackend::addTexture(common::Texture* texture)
     };
     auto image = resourceManager->createImage(extent, ImageType::eTexture);
     resourceManager->copyBufferToImage(textureStageBuffer, image, extent);
-    vk::SamplerCreateInfo samplerInfo{
-        .magFilter = vk::Filter::eLinear,
-        .minFilter = vk::Filter::eLinear,
-        .mipmapMode = vk::SamplerMipmapMode::eLinear,
-        .addressModeU = vk::SamplerAddressMode::eRepeat,
-        .addressModeV = vk::SamplerAddressMode::eRepeat,
-        .addressModeW = vk::SamplerAddressMode::eRepeat,
-        .mipLodBias = 0.0f,
-        .anisotropyEnable = true,
-        .maxAnisotropy = 4,
-        .compareEnable = false,
-        .compareOp = vk::CompareOp::eAlways,
-        .minLod = 0.0f,
-        .maxLod = 0.0f,
-        .borderColor = vk::BorderColor::eIntOpaqueBlack,
-        .unnormalizedCoordinates = false,
-    };
-    auto sampler = device.createSampler(samplerInfo);
     auto imageView = resourceManager->getImageView(image);
     static ImageId imageId = 0;
     this->textures[imageId] = Texture{
             .image = image,
             .imageView = imageView,
-            .sampler = sampler
     };
 
     return imageId;
@@ -1415,14 +1394,29 @@ LightId RenderBackend::addLight(glm::vec3 position, glm::vec3 color)
     return id++;
 }
 
+void RenderBackend::createSampler() {
+    vk::SamplerCreateInfo samplerInfo{
+        .magFilter = vk::Filter::eLinear,
+        .minFilter = vk::Filter::eLinear,
+        .mipmapMode = vk::SamplerMipmapMode::eLinear,
+        .addressModeU = vk::SamplerAddressMode::eRepeat,
+        .addressModeV = vk::SamplerAddressMode::eRepeat,
+        .addressModeW = vk::SamplerAddressMode::eRepeat,
+        .mipLodBias = 0.0f,
+        .anisotropyEnable = true,
+        .maxAnisotropy = 4,
+        .compareEnable = false,
+        .compareOp = vk::CompareOp::eAlways,
+        .minLod = 0.0f,
+        .maxLod = 0.0f,
+        .borderColor = vk::BorderColor::eIntOpaqueBlack,
+        .unnormalizedCoordinates = false,
+    };
+    sampler = device.createSampler(samplerInfo);
+}
 
-ModelId RenderBackend::addModel(MeshId mesh, glm::vec3 position,
-                                glm::vec3 rotation, ImageId texture)
+PipelineID RenderBackend::createPipeline(common::PipelineCreateInfo createInfo)
 {
-    std::cout << "New model, MeshId: " << mesh << std::endl;
-
-    auto _texture = this->textures[texture];
-    //Pipeline Stuff
     auto layout = descriptorManager->CreateLayout({
         vk::DescriptorSetLayoutBinding {
             .binding = 0,
@@ -1441,14 +1435,13 @@ ModelId RenderBackend::addModel(MeshId mesh, glm::vec3 position,
             .descriptorType = vk::DescriptorType::eCombinedImageSampler,
             .descriptorCount = 1,
             .stageFlags = vk::ShaderStageFlagBits::eAll,
-            .pImmutableSamplers = &_texture.sampler,
+            .pImmutableSamplers = &sampler,
         }
     });
-    descriptorManager->preAllocateDescriptorSets(layout, 2);
 
     auto pipelineid = pipelineManager->CreatePipeline({
-        .vertexShaderPath   = "/home/orvergon/myen/assets/default-shaders/vert",
-        .fragmentShaderPath = "/home/orvergon/myen/assets/default-shaders/frag",
+        .vertexShaderPath   = createInfo.vertexShaderPath,
+        .fragmentShaderPath = createInfo.fragmentShaderPath,
         .vertexBinds = std::vector<vk::VertexInputBindingDescription>{
             vk::VertexInputBindingDescription{
                 .binding = 0,
@@ -1487,14 +1480,29 @@ ModelId RenderBackend::addModel(MeshId mesh, glm::vec3 position,
             .minDepthBounds = 0.0f,
             .maxDepthBounds = 1.0f,
         },
+        .sampler = sampler,
         .renderPass = renderPass,
         .layoutIds = std::vector<DSLayoutId> {layout},
     });
 
-    DSId descriptors[2];
-    descriptors[0] = descriptorManager->getFreeDS(layout);
-    descriptors[1] = descriptorManager->getFreeDS(layout);
+    return pipelineid;
+}
 
+ModelId RenderBackend::addModel(MeshId mesh, glm::vec3 position,
+                                glm::vec3 rotation, ImageId texture,
+				PipelineID pipelineId)
+{
+    std::cout << "New model, MeshId: " << mesh << std::endl;
+
+    auto _texture = this->textures[texture];
+
+    auto dsLayout = pipelineManager->getPipeline(pipelineId).descriptorLayout;
+    descriptorManager->preAllocateDescriptorSets(dsLayout, 2);
+    DSId descriptors[2];
+    descriptors[0] = descriptorManager->getFreeDS(dsLayout);
+    descriptors[1] = descriptorManager->getFreeDS(dsLayout);
+
+    std::cout << "pipelineid: " << pipelineId<< std::endl;
     static ModelId id = 0;
     Model model{
         .id = id,
@@ -1502,7 +1510,7 @@ ModelId RenderBackend::addModel(MeshId mesh, glm::vec3 position,
         .position = position,
         .rotation = rotation,
 	.textureId = texture,
-        .pipeline = pipelineid,
+        .pipeline = pipelineId,
         .descriptors = {
             descriptors[0],
             descriptors[1]
@@ -1516,7 +1524,6 @@ ModelId RenderBackend::addModel(MeshId mesh, glm::vec3 position,
     std::cout << id << std::endl;
     return id++;
 }
-
 
 void RenderBackend::updateModelPosition(ModelId model, glm::vec3 position, glm::vec3 rotation) {
     models[model].position = position;
@@ -1625,7 +1632,7 @@ void RenderBackend::drawFrame()
             },
             WriteDescriptorInfo{
                 .imageInfo = vk::DescriptorImageInfo{
-                    .sampler = textures[models[modelId].textureId].sampler,
+                    .sampler = pipelineManager->getPipeline(models[modelId].pipeline).sampler,
                     .imageView = textures[models[modelId].textureId].imageView,
                     .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
                 }
@@ -1638,9 +1645,10 @@ void RenderBackend::drawFrame()
         commandBuffer.bindVertexBuffers(0, buffers, offsets);
         commandBuffer.bindIndexBuffer(resourceManager->getBuffer(mesh.indexBufferId), vk::DeviceSize(0), vk::IndexType::eUint32);
 
-        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipelineManager->getPipeline(models[modelId].pipeline));
+        std::cout << "Pipeline: " << models[modelId].pipeline << std::endl;
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipelineManager->getPipeline(models[modelId].pipeline).pipeline);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-                        pipelineManager->getPipelineLayout(models[modelId].pipeline),
+                        pipelineManager->getPipeline(models[modelId].pipeline).pipelineLayout,
                         0,
                         std::vector<vk::DescriptorSet>{descriptorManager->getDS(models[modelId].descriptors[frame])}, nullptr);
         commandBuffer.drawIndexed(mesh.indexCount, 1, 0, 0, 0);

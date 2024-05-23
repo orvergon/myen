@@ -181,12 +181,12 @@ bool Myen::nextFrame() {
 	if(keyEvent.keyStatus == KeyStatus::ePRESSED)
 	{
 	    keyPressedMap[keyEvent.keyName] = true;
-	    std::cout << "Apertou: " << keyEvent.keyName << std::endl;
+	    //std::cout << "Apertou: " << keyEvent.keyName << std::endl;
 	}
 	else
 	{
 	    keyPressedMap[keyEvent.keyName] = false;
-	    std::cout << "Soltou: " << keyEvent.keyName << std::endl;
+	    //std::cout << "Soltou: " << keyEvent.keyName << std::endl;
 	}
     }
 
@@ -246,8 +246,8 @@ ModelId Myen::importGlftFile(std::string gltf_path) {
 	//also the pointer to the number of channels always returns the real number of channels on the file
 	//not the returned number
         auto pixels = stbi_load_from_memory(image_data, imageBufferView.byteLength, &x, &y, &channels, 4);
-        std::cout << "(x: " << x << ", y: " << y << ")" << std::endl;
-        std::cout << "channels: " << channels << ")" << std::endl;
+        //std::cout << "(x: " << x << ", y: " << y << ")" << std::endl;
+        //std::cout << "channels: " << channels << ")" << std::endl;
 	t = common::Texture{
 	    .data = pixels,
 	    .data_size = 4 * x * y,
@@ -285,9 +285,10 @@ ModelId Myen::importGlftFile(std::string gltf_path) {
 
 EntityId nextEntityId = 0;
 
-EntityId Myen::createEntity(ModelId modelId, glm::vec3 pos) {
+EntityId Myen::createEntity(ModelId modelId, glm::vec3 pos, common::PipelineCreateInfo shaderInfo) {
     auto model = models[modelId];
-    auto entityId = renderBackend->addModel(model.meshId, pos, glm::vec3(0.0f), model.textureId);
+    auto pipelineId = renderBackend->createPipeline(shaderInfo);
+    auto entityId = renderBackend->addModel(model.meshId, pos, glm::vec3(0.0f), model.textureId, pipelineId);
     entities[nextEntityId] = Entity{
 	.id = nextEntityId,
 	.type = Entity::Type::Graphical,

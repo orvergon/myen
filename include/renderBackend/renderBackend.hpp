@@ -149,6 +149,14 @@ private:
 typedef uint64_t PipelineID;
 typedef uint64_t PipelineLayoutID;
 
+struct Pipeline
+{
+    vk::Pipeline pipeline;
+    vk::PipelineLayout pipelineLayout;
+    vk::Sampler sampler;
+    DSLayoutId descriptorLayout;
+};
+
 class PipelineManager
 {
 public:
@@ -159,6 +167,7 @@ public:
 	std::vector<vk::VertexInputBindingDescription> vertexBinds;
 	std::vector<vk::VertexInputAttributeDescription> vertexAttribs;
 	std::optional<vk::PipelineDepthStencilStateCreateInfo> depthStencilStateCreateInfo;
+	vk::Sampler sampler;
 
 	vk::RenderPass renderPass;
 	std::optional<std::vector<DSLayoutId>> layoutIds;
@@ -166,14 +175,12 @@ public:
 
     PipelineManager(vk::Device device, DescriptorManager* descriptorManager);
     PipelineID CreatePipeline(PipelineInfo info);
-    vk::Pipeline getPipeline(PipelineID id);
-    vk::PipelineLayout getPipelineLayout(PipelineID id);
+    Pipeline getPipeline(PipelineID id);
 
 private:
     vk::Device device;
     DescriptorManager* descriptorManager;
-    std::unordered_map<PipelineID, vk::Pipeline> pipelines;
-    std::unordered_map<PipelineID, vk::PipelineLayout> layouts;
+    std::unordered_map<PipelineID, Pipeline> pipelines;
 
     std::vector<char> readFile(const std::string& filename);
     vk::ShaderModule compileShaderModule(const std::vector<char>& code);
@@ -184,7 +191,6 @@ private:
 struct Texture {
     ImageId image;
     vk::ImageView imageView;
-    vk::Sampler sampler;
 };
 
 typedef uint64_t LightId;
@@ -230,11 +236,13 @@ public:
     ImageId addTexture(common::Texture* texture);
     LightId addLight(glm::vec3 position, glm::vec3 color);
     ModelId addModel(MeshId mesh,
-                 glm::vec3 position,
-                 glm::vec3 rotation,
-                 ImageId texture);
+		     glm::vec3 position,
+		     glm::vec3 rotation,
+		     ImageId texture,
+		     PipelineID pipeline = 0);
     void updateModelPosition(ModelId model, glm::vec3 position, glm::vec3 rotation);
     void addUICommands(std::string windowName, std::function<void(void)> function);
+    PipelineID createPipeline(common::PipelineCreateInfo createInfo);
     
     common::Camera* camera; //should this be a pointer?
 private:
@@ -264,6 +272,9 @@ private:
     std::vector<std::function<void(void)>> functions;
     BufferId vertexBuffer;
     BufferId indexBuffer;
+    vk::Sampler sampler;
+
+    void createSampler();
 };
 
 }

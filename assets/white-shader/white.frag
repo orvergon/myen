@@ -40,6 +40,6 @@ void main() {
     vec3 specular = specularStrength * spec * frameUniform.lights[1].lightColor.xyz;
     
     vec3 objColor = texture(texSampler, texCoord).xyz;
-    outColor = vec4((ambient + diffuse + specular) * objColor, 1.0);
-    //outColor = vec4(frameUniform.lights[1].lightPosition.xyz, 1.0);
+    //outColor = vec4((ambient + diffuse + specular) * objColor, 1.0);
+    outColor = vec4(1.0f);
 }
